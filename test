@@ -1,0 +1,10 @@
+#
+# Script to transform legacy docbook to epub
+# created by dchagnon
+#
+$1=PUBLISHER
+$2=ID
+
+cd content/$1/$2
+#
+echo "application/epub+zip" > mimetype
