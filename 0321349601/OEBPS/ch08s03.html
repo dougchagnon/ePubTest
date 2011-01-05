@@ -1,0 +1,180 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN" "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml"><head><title>Configuring ThreadPoolExecutor</title><link rel="stylesheet" href="styles/convert.css" type="text/css"/></head><body><div class="section" title="Configuring ThreadPoolExecutor"><div class="titlepage"><div><div><h2 class="title"><a id="ch08lev1sec3"/>Configuring <code class="literal">ThreadPoolExecutor</code></h2></div></div></div>
+
+<p><code class="literal">ThreadPoolExecutor</code> provides the base implementation for the executors returned by the <code class="literal">newCachedThreadPool</code>, <code class="literal">newFixedThreadPool</code>, and <code class="literal">newScheduled-ThreadExecutor</code> factories in <code class="literal">Executors</code>. <code class="literal">ThreadPoolExecutor</code> is a flexible, robust pool implementation that allows a variety of customizations.</p>
+<p>If the default execution policy does not meet your needs, you can instantiate a <code class="literal">ThreadPoolExecutor</code> through its constructor and customize it as you see fit; you can consult the source code for <code class="literal">Executors</code> to see the execution policies for the default configurations and use them as a starting point. <code class="literal">ThreadPoolExecutor</code> has several constructors, the most general of which is shown in <a class="link" href="ch08s03.html#ch08list02" title="Example 8.2. General Constructor for ThreadPoolExecutor.">Listing 8.2</a>.</p>
+<div class="section" title="Thread Creation and Teardown"><div class="titlepage"><div><div><h3 class="title"><a id="ch08lev2sec3"/>Thread Creation and Teardown</h3></div></div></div>
+
+<p>The core pool size, maximum pool size, and keep-alive time govern thread creation and teardown. The core size is the target size; the implementation attempts to maintain the pool at this size even when there are no tasks to execute,<sup>[<a id="ch08fn02" href="#ftn.ch08fn02" class="footnote">2</a>]</sup> and will <a id="iddle1251" class="indexterm"/><a id="iddle1476" class="indexterm"/><a id="iddle1574" class="indexterm"/><a id="iddle1674" class="indexterm"/><a id="iddle2926" class="indexterm"/><a id="iddle2927" class="indexterm"/><a id="iddle2930" class="indexterm"/><a id="iddle2931" class="indexterm"/><a id="iddle3182" class="indexterm"/><a id="iddle3617" class="indexterm"/><a id="iddle3618" class="indexterm"/><a id="iddle3627" class="indexterm"/><a id="iddle3768" class="indexterm"/><a id="iddle3769" class="indexterm"/><a id="iddle3932" class="indexterm"/><a id="iddle4303" class="indexterm"/><a id="iddle4315" class="indexterm"/><a id="iddle4316" class="indexterm"/><a id="iddle4642" class="indexterm"/><a id="iddle4643" class="indexterm"/><a id="iddle4644" class="indexterm"/><a id="iddle4683" class="indexterm"/><a id="iddle4804" class="indexterm"/><a id="iddle4835" class="indexterm"/><a id="iddle4836" class="indexterm"/><a id="iddle4856" class="indexterm"/><a id="iddle4903" class="indexterm"/><a id="iddle4904" class="indexterm"/><a id="iddle4925" class="indexterm"/><a id="iddle4926" class="indexterm"/>not create more threads than this unless the work queue is full.<sup>[<a id="ch08fn03" href="#ftn.ch08fn03" class="footnote">3</a>]</sup> The maximum pool size is the upper bound on how many pool threads can be active at once. A thread that has been idle for longer than the keep-alive time becomes a candidate for reaping and can be terminated if the current pool size exceeds the core size.</p>
+<div class="example"><a id="ch08list02"/><p class="title"><b>Example 8.2. General Constructor for <code class="literal">ThreadPoolExecutor</code>.</b></p><div class="example-contents">
+
+<pre class="programlisting">public ThreadPoolExecutor(int corePoolSize,
+                          int maximumPoolSize,
+                          long keepAliveTime,
+                          TimeUnit unit,
+                          BlockingQueue&lt;Runnable&gt; workQueue,
+                          ThreadFactory threadFactory,
+                          RejectedExecutionHandler handler) { ... }
+</pre>
+</div></div><br class="example-break"/>
+<p>By tuning the core pool size and keep-alive times, you can encourage the pool to reclaim resources used by otherwise idle threads, making them available for more useful work. (Like everything else, this is a tradeoff: reaping idle threads incurs additional latency due to thread creation if threads must later be created when demand increases.)</p>
+<p>The <code class="literal">newFixedThreadPool</code> factory sets both the core pool size and the maximum pool size to the requested pool size, creating the effect of infinite timeout; the <code class="literal">newCachedThreadPool</code> factory sets the maximum pool size to <code class="literal">Integer.MAX_VALUE</code> and the core pool size to zero with a timeout of one minute, creating the effect of an infinitely expandable thread pool that will contract again when demand decreases. Other combinations are possible using the explicit <code class="literal">ThreadPool-Executor</code> constructor.</p>
+</div>
+<div class="section" title="Managing Queued Tasks"><div class="titlepage"><div><div><h3 class="title"><a id="ch08lev2sec4"/>Managing Queued Tasks</h3></div></div></div>
+
+<p>Bounded thread pools limit the number of tasks that can be executed concurrently. (The single-threaded executors are a notable special case: they guarantee that no tasks will execute concurrently, offering the possibility of achieving thread safety through thread confinement.)</p>
+<p>We saw in <a class="link" href="ch06.html#ch06lev2sec2" title="Explicitly Creating Threads for Tasks">Section 6.1.2</a> how unbounded thread creation could lead to instability, and addressed this problem by using a fixed-sized thread pool instead of creating a new thread for every request. However, this is only a partial solution; it is still possible for the application to run out of resources under heavy load, just harder. If the arrival rate for new requests exceeds the rate at which they can be <a id="iddle1222" class="indexterm"/><a id="iddle1239" class="indexterm"/><a id="iddle1252" class="indexterm"/><a id="iddle2383" class="indexterm"/><a id="iddle2384" class="indexterm"/><a id="iddle2989" class="indexterm"/><a id="iddle3196" class="indexterm"/><a id="iddle3197" class="indexterm"/><a id="iddle3664" class="indexterm"/><a id="iddle3767" class="indexterm"/><a id="iddle3893" class="indexterm"/><a id="iddle3894" class="indexterm"/><a id="iddle3973" class="indexterm"/><a id="iddle4599" class="indexterm"/><a id="iddle4864" class="indexterm"/><a id="iddle4996" class="indexterm"/><a id="iddle5160" class="indexterm"/>handled, requests will still queue up. With a thread pool, they wait in a queue of <code class="literal">Runnable</code>s managed by the <code class="literal">Executor</code> instead of queueing up as threads contending for the CPU. Representing a waiting task with a <code class="literal">Runnable</code> and a list node is certainly a lot cheaper than with a thread, but the risk of resource exhaustion still remains if clients can throw requests at the server faster than it can handle them.</p>
+<p>Requests often arrive in bursts even when the average request rate is fairly stable. Queues can help smooth out transient bursts of tasks, but if tasks continue to arrive too quickly you will eventually have to throttle the arrival rate to avoid running out of memory.<sup>[<a id="ch08fn04" href="#ftn.ch08fn04" class="footnote">4</a>]</sup> Even before you run out of memory, response time will get progressively worse as the task queue grows.</p>
+<p><code class="literal">ThreadPoolExecutor</code> allows you to supply a <code class="literal">BlockingQueue</code> to hold tasks awaiting execution. There are three basic approaches to task queueing: unbounded queue, bounded queue, and synchronous handoff. The choice of queue interacts with other configuration parameters such as pool size.</p>
+<p>The default for <code class="literal">newFixedThreadPool</code> and <code class="literal">newSingleThreadExecutor</code> is to use an unbounded <code class="literal">LinkedBlockingQueue</code>. Tasks will queue up if all worker threads are busy, but the queue could grow without bound if the tasks keep arriving faster than they can be executed.</p>
+<p>A more stable resource management strategy is to use a bounded queue, such as an <code class="literal">ArrayBlockingQueue</code> or a bounded <code class="literal">LinkedBlockingQueue</code> or <code class="literal">Priority-BlockingQueue</code>. Bounded queues help prevent resource exhaustion but introduce the question of what to do with new tasks when the queue is full. (There are a number of possible <span class="emphasis"><em>saturation policies</em></span> for addressing this problem; see <a class="link" href="ch08s03.html#ch08lev2sec5" title="Saturation Policies">Section 8.3.3</a>.) With a bounded work queue, the queue size and pool size must be tuned together. A large queue coupled with a small pool can help reduce memory usage, CPU usage, and context switching, at the cost of potentially constraining throughput.</p>
+<p>For very large or unbounded pools, you can also bypass queueing entirely and instead hand off tasks directly from producers to worker threads using a <code class="literal">SynchronousQueue</code>. A <code class="literal">SynchronousQueue</code> is not really a queue at all, but a mechanism for managing handoffs between threads. In order to put an element on a <code class="literal">SynchronousQueue</code>, another thread must already be waiting to accept the handoff. If no thread is waiting but the current pool size is less than the maximum, <code class="literal">Thread-PoolExecutor</code> creates a new thread; otherwise the task is rejected according to the saturation policy. Using a direct handoff is more efficient because the task can be handed right to the thread that will execute it, rather than first placing it on a queue and then having the worker thread fetch it from the queue. <code class="literal">SynchronousQueue</code> is a practical choice only if the pool is unbounded or if rejecting excess tasks is acceptable. The <code class="literal">newCachedThreadPool</code> factory uses a <code class="literal">SynchronousQueue</code>.</p>
+<p>Using a FIFO queue like <code class="literal">LinkedBlockingQueue</code> or <code class="literal">ArrayBlockingQueue</code> causes tasks to be started in the order in which they arrived. For more control over task execution order, you can use a <code class="literal">PriorityBlockingQueue</code>, which <a id="iddle1006" class="indexterm"/><a id="iddle1007" class="indexterm"/><a id="iddle1059" class="indexterm"/><a id="iddle1250" class="indexterm"/><a id="iddle1295" class="indexterm"/><a id="iddle1952" class="indexterm"/><a id="iddle1953" class="indexterm"/><a id="iddle2607" class="indexterm"/><a id="iddle3306" class="indexterm"/><a id="iddle3532" class="indexterm"/><a id="iddle3586" class="indexterm"/><a id="iddle3755" class="indexterm"/><a id="iddle3756" class="indexterm"/><a id="iddle3828" class="indexterm"/><a id="iddle3829" class="indexterm"/><a id="iddle3832" class="indexterm"/><a id="iddle3833" class="indexterm"/><a id="iddle3925" class="indexterm"/><a id="iddle4052" class="indexterm"/><a id="iddle4053" class="indexterm"/><a id="iddle4598" class="indexterm"/><a id="iddle4600" class="indexterm"/><a id="iddle4805" class="indexterm"/><a id="iddle4865" class="indexterm"/>orders tasks according to priority. Priority can be defined by natural order (if tasks implement <code class="literal">Comparable</code>) or by a <code class="literal">Comparator</code>.</p>
+<div class="sidebar"><a id="ch08sb03"/><p class="title"><b/></p>
+<p>The <code class="literal">newCachedThreadPool</code> factory is a good default choice for an <code class="literal">Executor</code>, providing better queuing performance than a fixed thread pool.<sup>[<a id="ch08fn05" href="#ftn.ch08fn05" class="footnote">5</a>]</sup> A fixed size thread pool is a good choice when you need to limit the number of concurrent tasks for resource-management purposes, as in a server application that accepts requests from network clients and would otherwise be vulnerable to overload.</p>
+</div>
+<p>Bounding either the thread pool or the work queue is suitable only when tasks are independent. With tasks that depend on other tasks, bounded thread pools or queues can cause thread starvation deadlock; instead, use an unbounded pool configuration like <code class="literal">newCachedThreadPool</code>.<sup>[<a id="ch08fn06" href="#ftn.ch08fn06" class="footnote">6</a>]</sup></p>
+</div>
+<div class="section" title="Saturation Policies"><div class="titlepage"><div><div><h3 class="title"><a id="ch08lev2sec5"/>Saturation Policies</h3></div></div></div>
+
+<p>When a bounded work queue fills up, the <span class="emphasis"><em>saturation policy</em></span> comes into play. The saturation policy for a <code class="literal">ThreadPoolExecutor</code> can be modified by calling <code class="literal">setRejectedExecutionHandler</code>. (The saturation policy is also used when a task is submitted to an <code class="literal">Executor</code> that has been shut down.) Several implementations of <code class="literal">RejectedExecutionHandler</code> are provided, each implementing a different saturation policy: <code class="literal">AbortPolicy</code>, <code class="literal">CallerRunsPolicy</code>, <code class="literal">DiscardPolicy</code>, and <code class="literal">DiscardOldestPolicy</code>.</p>
+<p>The default policy, <span class="emphasis"><em>abort</em></span>, causes <code class="literal">execute</code> to throw the unchecked <code class="literal">Rejected-ExecutionException</code>; the caller can catch this exception and implement its own overflow handling as it sees fit. The <span class="emphasis"><em>discard</em></span> policy silently discards the newly submitted task if it cannot be queued for execution; the <span class="emphasis"><em>discard-oldest</em></span> policy discards the task that would otherwise be executed next and tries to resubmit the new task. (If the work queue is a priority queue, this discards the highest-priority element, so the combination of a discard-oldest saturation policy and a priority queue is not a good one.)</p>
+<p>The <span class="emphasis"><em>caller-runs</em></span> policy implements a form of throttling that neither discards tasks nor throws an exception, but instead tries to slow down the flow of new tasks by pushing some of the work back to the caller. It executes the newly submitted task not in a pool thread, but in the thread that calls <code class="literal">execute</code>. If we modified our <code class="literal">WebServer</code> example to use a bounded queue and the caller-runs policy, after all the pool threads were occupied and the work queue filled up the next task would be executed in the main thread during the call to <code class="literal">execute</code>. Since <a id="iddle1527" class="indexterm"/><a id="iddle1528" class="indexterm"/><a id="iddle1731" class="indexterm"/><a id="iddle1736" class="indexterm"/><a id="iddle1737" class="indexterm"/><a id="iddle1738" class="indexterm"/><a id="iddle1831" class="indexterm"/><a id="iddle2090" class="indexterm"/><a id="iddle2298" class="indexterm"/><a id="iddle2299" class="indexterm"/><a id="iddle2459" class="indexterm"/><a id="iddle3923" class="indexterm"/><a id="iddle4142" class="indexterm"/><a id="iddle4771" class="indexterm"/><a id="iddle4772" class="indexterm"/><a id="iddle4846" class="indexterm"/><a id="iddle5001" class="indexterm"/>this would probably take some time, the main thread cannot submit any more tasks for at least a little while, giving the worker threads some time to catch up on the backlog. The main thread would also not be calling <code class="literal">accept</code> during this time, so incoming requests will queue up in the TCP layer instead of in the application. If the overload persisted, eventually the TCP layer would decide it has queued enough connection requests and begin discarding connection requests as well. As the server becomes overloaded, the overload is gradually pushed outward—from the pool threads to the work queue to the application to the TCP layer, and eventually to the client—enabling more graceful degradation under load.</p>
+<p>Choosing a saturation policy or making other changes to the execution policy can be done when the <code class="literal">Executor</code> is created. <a class="link" href="ch08s03.html#ch08list03" title="Example 8.3. Creating a Fixed-sized Thread Pool with a Bounded Queue and the Caller-runs Saturation Policy.">Listing 8.3</a> illustrates creating a fixedsize thread pool with the caller-runs saturation policy.</p>
+<div class="example"><a id="ch08list03"/><p class="title"><b>Example 8.3. Creating a Fixed-sized Thread Pool with a Bounded Queue and the Caller-runs Saturation Policy.</b></p><div class="example-contents">
+
+<pre class="programlisting">ThreadPoolExecutor executor
+    = new ThreadPoolExecutor(N_THREADS, N_THREADS,
+        0L, TimeUnit.MILLISECONDS,
+        new LinkedBlockingQueue&lt;Runnable&gt;(CAPACITY));
+executor.setRejectedExecutionHandler(
+    new ThreadPoolExecutor.CallerRunsPolicy());
+</pre>
+</div></div><br class="example-break"/>
+<p>There is no predefined saturation policy to make <code class="literal">execute</code> block when the work queue is full. However, the same effect can be accomplished by using a <code class="literal">Semaphore</code> to bound the task injection rate, as shown in <code class="literal">BoundedExecutor</code> in <a class="link" href="ch08s03.html#ch08list04" title="Example 8.4. Using a Semaphore to Throttle Task Submission.">Listing 8.4</a>. In such an approach, use an unbounded queue (there’s no reason to bound both the queue size and the injection rate) and set the bound on the semaphore to be equal to the pool size <span class="emphasis"><em>plus</em></span> the number of queued tasks you want to allow, since the semaphore is bounding the number of tasks both currently executing and awaiting execution.</p>
+</div>
+<div class="section" title="Thread Factories"><div class="titlepage"><div><div><h3 class="title"><a id="ch08lev2sec6"/>Thread Factories</h3></div></div></div>
+
+<p>Whenever a thread pool needs to create a thread, it does so through a <span class="emphasis"><em>thread factory</em></span> (see <a class="link" href="ch08s03.html#ch08list05" title="Example 8.5. ThreadFactory Interface.">Listing 8.5</a>). The default thread factory creates a new, nondaemon thread with no special configuration. Specifying a thread factory allows you to customize the configuration of pool threads. <code class="literal">ThreadFactory</code> has a single method, <code class="literal">newThread</code>, that is called whenever a thread pool needs to create a new thread.</p>
+<p>There are a number of reasons to use a custom thread factory. You might want to specify an <code class="literal">UncaughtExceptionHandler</code> for pool threads, or instantiate an instance of a custom <code class="literal">Thread</code> class, such as one that performs debug logging. You might want to modify the priority (generally not a very good idea; see <a class="link" href="ch10s03.html#ch10lev2sec8" title="Starvation">Section 10.3.1</a>) or set the daemon status (again, not all that good an idea; see <a class="link" href="ch07s04.html#ch07lev2sec15" title="Daemon Threads">Section 7.4.2</a>) of pool threads. Or maybe you just want to give pool threads more meaningful names to simplify interpreting thread dumps and error logs.</p>
+
+<p/><div class="example"><a id="ch08list04"/><p class="title"><b>Example 8.4. Using a <code class="literal">Semaphore</code> to Throttle Task Submission.</b></p><div class="example-contents">
+
+
+<pre class="programlisting">@ThreadSafe
+public class BoundedExecutor {
+    private final Executor exec;
+    private final Semaphore semaphore;
+
+    public BoundedExecutor(Executor exec, int bound) {
+        this.exec = exec;
+        this.semaphore = new Semaphore(bound);
+    }
+
+    public void submitTask(final Runnable command)
+            throws InterruptedException {
+        semaphore.acquire();
+        try {
+            exec.execute(new Runnable() {
+                public void run() {
+                    try {
+                        command.run();
+                    } finally {
+                        semaphore.release();
+                    }
+                }
+            });
+        } catch (RejectedExecutionException e) {
+            semaphore.release();
+        }
+    }
+}
+</pre>
+</div></div><br class="example-break"/>
+<div class="example"><a id="ch08list05"/><p class="title"><b>Example 8.5. <code class="literal">ThreadFactory</code> Interface.</b></p><div class="example-contents">
+
+<pre class="programlisting">public interface ThreadFactory {
+    Thread newThread(Runnable r);
+}
+</pre>
+</div></div><br class="example-break"/>
+<p><a id="iddle4139" class="indexterm"/><a id="iddle4845" class="indexterm"/><a id="iddle4866" class="indexterm"/><a id="iddle1032" class="indexterm"/><a id="iddle1033" class="indexterm"/><a id="iddle1477" class="indexterm"/><a id="iddle1529" class="indexterm"/><a id="iddle1530" class="indexterm"/><a id="iddle1575" class="indexterm"/><a id="iddle1739" class="indexterm"/><a id="iddle1740" class="indexterm"/><a id="iddle2142" class="indexterm"/><a id="iddle2144" class="indexterm"/><a id="iddle3171" class="indexterm"/><a id="iddle3548" class="indexterm"/><a id="iddle3549" class="indexterm"/><a id="iddle3550" class="indexterm"/><a id="iddle3587" class="indexterm"/><a id="iddle3588" class="indexterm"/><a id="iddle3626" class="indexterm"/><a id="iddle4116" class="indexterm"/><a id="iddle4117" class="indexterm"/><a id="iddle4304" class="indexterm"/><a id="iddle4802" class="indexterm"/><code class="literal">MyThreadFactory</code> in <a class="link" href="ch08s03.html#ch08list06" title="Example 8.6. Custom Thread Factory.">Listing 8.6</a> illustrates a custom thread factory. It instantiates a new <code class="literal">MyAppThread</code>, passing a pool-specific name to the constructor so that threads from each pool can be distinguished in thread dumps and error logs. <code class="literal">My-AppThread</code> can also be used elsewhere in the application so that all threads can take advantage of its debugging features.</p>
+<div class="example"><a id="ch08list06"/><p class="title"><b>Example 8.6. Custom Thread Factory.</b></p><div class="example-contents">
+
+<pre class="programlisting">public class MyThreadFactory implements ThreadFactory {
+    private final String poolName;
+
+    public MyThreadFactory(String poolName) {
+        this.poolName = poolName;
+    }
+
+    public Thread newThread(Runnable runnable) {
+        return new MyAppThread(runnable, poolName);
+    }
+}
+</pre>
+</div></div><br class="example-break"/>
+<p>The interesting customization takes place in <code class="literal">MyAppThread</code>, shown in <a class="link" href="ch08s03.html#ch08list07" title="Example 8.7. Custom Thread Base Class.">Listing 8.7</a>, which lets you provide a thread name, sets a custom <code class="literal">UncaughtException-Handler</code> that writes a message to a <code class="literal">Logger</code>, maintains statistics on how many threads have been created and destroyed, and optionally writes a debug message to the log when a thread is created or terminates.</p>
+<p>If your application takes advantage of <span class="emphasis"><em>security policies</em></span> to grant permissions to particular codebases, you may want to use the <code class="literal">privilegedThreadFactory</code> factory method in <code class="literal">Executors</code> to construct your thread factory. It creates pool threads that have the same permissions, <code class="literal">AccessControlContext</code>, and <code class="literal">contextClassLoader</code> as the thread creating the <code class="literal">privilegedThreadFactory</code>. Otherwise, threads created by the thread pool inherit permissions from whatever client happens to be calling <code class="literal">execute</code> or <code class="literal">submit</code> at the time a new thread is needed, which could cause confusing security-related exceptions.</p>
+</div>
+<div class="section" title="Customizing ThreadPoolExecutor After Construction"><div class="titlepage"><div><div><h3 class="title"><a id="ch08lev2sec7"/>Customizing ThreadPoolExecutor After Construction</h3></div></div></div>
+
+<p>Most of the options passed to the <code class="literal">ThreadPoolExecutor</code> constructors can also be modified after construction via setters (such as the core thread pool size, maximum thread pool size, keep-alive time, thread factory, and rejected execution handler). If the <code class="literal">Executor</code> is created through one of the factory methods in <code class="literal">Executors</code> (except <code class="literal">newSingleThreadExecutor</code>), you can cast the result to <code class="literal">Thread-PoolExecutor</code> to access the setters as in <a class="link" href="ch08s03.html#ch08list08" title="Example 8.8. Modifying an Executor Created with the Standard Factories.">Listing 8.8</a>.</p>
+<p><code class="literal">Executors</code> includes a factory method, <code class="literal">unconfigurableExecutorService</code>, which takes an existing <code class="literal">ExecutorService</code> and wraps it with one exposing only the methods of <code class="literal">ExecutorService</code> so it cannot be further configured. Unlike the pooled implementations, <code class="literal">newSingleThreadExecutor</code> returns an <code class="literal">ExecutorService</code> wrapped in this manner, rather than a raw <code class="literal">ThreadPoolExecutor</code>. While <a id="iddle2143" class="indexterm"/><a id="iddle1165" class="indexterm"/><a id="iddle2289" class="indexterm"/><a id="iddle2652" class="indexterm"/><a id="iddle2764" class="indexterm"/><a id="iddle3172" class="indexterm"/><a id="iddle3191" class="indexterm"/><a id="iddle3253" class="indexterm"/><a id="iddle3620" class="indexterm"/><a id="iddle4443" class="indexterm"/><a id="iddle4444" class="indexterm"/><a id="iddle4793" class="indexterm"/><a id="iddle4857" class="indexterm"/><a id="iddle4914" class="indexterm"/><a id="iddle5012" class="indexterm"/>a single-threaded executor is actually implemented as a thread pool with one thread, it also promises not to execute tasks concurrently. If some misguided code were to increase the pool size on a single-threaded executor, it would undermine the intended execution semantics.</p>
+<div class="example"><a id="ch08list07"/><p class="title"><b>Example 8.7. Custom Thread Base Class.</b></p><div class="example-contents">
+
+
+<pre class="programlisting">public class MyAppThread extends Thread {
+    public static final String DEFAULT_NAME = "MyAppThread";
+    private static volatile boolean debugLifecycle = false;
+    private static final AtomicInteger created = new AtomicInteger();
+    private static final AtomicInteger alive = new AtomicInteger();
+    private static final Logger log = Logger.getAnonymousLogger();
+
+    public MyAppThread(Runnable r) { this(r, DEFAULT_NAME); }
+
+    public MyAppThread(Runnable runnable, String name) {
+        super(runnable, name + "-" + created.incrementAndGet());
+        setUncaughtExceptionHandler(
+            new Thread.UncaughtExceptionHandler() {
+                public void uncaughtException(Thread t,
+                                              Throwable e) {
+                    log.log(Level.SEVERE,
+                        "UNCAUGHT in thread " + t.getName(), e);
+                }
+            });
+    }
+
+    public void run() {
+        // <span class="emphasis"><em>Copy debug flag to ensure consistent value throughout.</em></span>
+        boolean debug = debugLifecycle;
+        if (debug) log.log(Level.FINE, "Created "+getName());
+        try {
+            alive.incrementAndGet();
+            super.run();
+        } finally {
+            alive.decrementAndGet();
+            if (debug) log.log(Level.FINE, "Exiting "+getName());
+        }
+    }
+
+    public static int getThreadsCreated() { return created.get(); }
+    public static int getThreadsAlive() { return alive.get(); }
+    public static boolean getDebug() { return debugLifecycle; }
+    public static void setDebug(boolean b) { debugLifecycle = b; }
+}
+</pre>
+</div></div><br class="example-break"/>
+<div class="example"><a id="ch08list08"/><p class="title"><b>Example 8.8. Modifying an <code class="literal">Executor</code> Created with the Standard Factories.</b></p><div class="example-contents">
+
+<pre class="programlisting">ExecutorService exec = Executors.newCachedThreadPool();
+if (exec instanceof ThreadPoolExecutor)
+    ((ThreadPoolExecutor) exec).setCorePoolSize(10);
+else
+    throw new AssertionError("Oops, bad assumption");
+</pre>
+</div></div><br class="example-break"/>
+<p>You can use this technique with your own executors to prevent the execution policy from being modified. If you will be exposing an <code class="literal">ExecutorService</code> to code you don’t trust not to modify it, you can wrap it with an <code class="literal">unconfigurableExecutorService</code>.</p>
+</div>
+<div class="footnotes"><br/><hr/><div class="footnote"><p><sup>[<a id="ftn.ch08fn02" href="#ch08fn02" class="para">2</a>] </sup>Whena <code class="literal">ThreadPoolExecutor</code> is initially created, the core threads are not started immediately but instead as tasks are submitted, unless you call <code class="literal">prestartAllCoreThreads</code>.</p></div><div class="footnote"><p><sup>[<a id="ftn.ch08fn03" href="#ch08fn03" class="para">3</a>] </sup>Developers are sometimes tempted to set the core size to zero so that the worker threads will eventually be torn down and therefore won’t prevent the JVM from exiting, but this can cause some strange-seeming behavior in thread pools that don’t use a <code class="literal">SynchronousQueue</code> for their work queue (as <code class="literal">newCachedThreadPool</code> does). If the pool is already at the core size, <code class="literal">ThreadPoolExecutor</code> creates a new thread only if the work queue is full. So tasks submitted to a thread pool with a work queue that has any capacity and a core size of zero will not execute until the queue fills up, which is usually not what is desired. In Java 6, <code class="literal">allowCoreThreadTimeOut</code> allows you to request that all pool threads be able to time out; enable this feature with a core size of zero if you want a bounded thread pool with a bounded work queue but still have all the threads torn down when there is no work to do.</p></div><div class="footnote"><p><sup>[<a id="ftn.ch08fn04" href="#ch08fn04" class="para">4</a>] </sup>This is analogous to flow control in communications networks: you may be willing to buffer a certain amount of data, but eventually you need to find a way to get the other side to stop sending you data, or throw the excess data on the floor and hope the sender retransmits it when you’re not so busy.</p></div><div class="footnote"><p><sup>[<a id="ftn.ch08fn05" href="#ch08fn05" class="para">5</a>] </sup>This performance difference comes from the use of <code class="literal">SynchronousQueue</code> instead of <code class="literal">LinkedBlocking-Queue</code>. <code class="literal">SynchronousQueue</code> was replaced in Java 6 with a new nonblocking algorithm that improved throughput in <code class="literal">Executor</code> benchmarks by a factor of three over the Java 5.0 <code class="literal">SynchronousQueue</code> implementation (<a class="link" href="bi01.html#biblio01_030" title="Scalable Synchronous Queues">Scherer et al., 2006</a>).</p></div><div class="footnote"><p><sup>[<a id="ftn.ch08fn06" href="#ch08fn06" class="para">6</a>] </sup>An alternative configuration for tasks that submit other tasks and wait for their results is to use a bounded thread pool, a <code class="literal">SynchronousQueue</code> as the work queue, and the caller-runs saturation policy.</p></div></div></div></body></html>

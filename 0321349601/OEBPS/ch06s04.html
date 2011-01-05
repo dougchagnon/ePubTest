@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN" "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml"><head><title>Summary</title><link rel="stylesheet" href="styles/convert.css" type="text/css"/></head><body><div class="section" title="Summary"><div class="titlepage"><div><div><h2 class="title"><a id="ch06lev1sec4"/>Summary</h2></div></div></div>
+
+<p>Structuring applications around the execution of <span class="emphasis"><em>tasks</em></span> can simplify development and facilitate concurrency. The <code class="literal">Executor</code> framework permits you to decouple task submission from execution policy and supports a rich variety of execution policies; whenever you find yourself creating threads to perform tasks, consider using an <code class="literal">Executor</code> instead. To maximize the benefit of decomposing an application into tasks, you must identify sensible task boundaries. In some applications, the obvious task boundaries work well, whereas in others some analysis may be required to uncover finer-grained exploitable parallelism.</p>
+
+<p/><div class="example"><a id="ch06list17"/><p class="title"><b>Example 6.17. Requesting Travel Quotes Under a Time Budget.</b></p><div class="example-contents">
+
+
+<pre class="programlisting">private class QuoteTask implements Callable&lt;TravelQuote&gt; {
+    private final TravelCompany company;
+    private final TravelInfo travelInfo;
+    ...
+    public TravelQuote call() throws Exception {
+        return company.solicitQuote(travelInfo);
+    }
+}
+
+public List&lt;TravelQuote&gt; getRankedTravelQuotes(
+        TravelInfo travelInfo, Set&lt;TravelCompany&gt; companies,
+        Comparator&lt;TravelQuote&gt; ranking, long time, TimeUnit unit)
+        throws InterruptedException {
+    List&lt;QuoteTask&gt; tasks = new ArrayList&lt;QuoteTask&gt;();
+    for (TravelCompany company : companies)
+        tasks.add(new QuoteTask(company, travelInfo));
+
+    List&lt;Future&lt;TravelQuote&gt;&gt; futures =
+        <span class="strong"><strong>exec.invokeAll(tasks, time, unit);</strong></span>
+
+    List&lt;TravelQuote&gt; quotes =
+        new ArrayList&lt;TravelQuote&gt;(tasks.size());
+    Iterator&lt;QuoteTask&gt; taskIter = tasks.iterator();
+    for (Future&lt;TravelQuote&gt; f : futures) {
+        QuoteTask task = taskIter.next();
+        try {
+            quotes.add(f.get());
+        } catch (ExecutionException e) {
+            quotes.add(task.getFailureQuote(e.getCause()));
+        } catch (CancellationException e) {
+            quotes.add(task.getTimeoutQuote(e));
+        }
+    }
+
+    Collections.sort(quotes, ranking);
+    return quotes;
+}
+</pre>
+</div></div><br class="example-break"/>
+</div></body></html>

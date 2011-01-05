@@ -1,0 +1,1814 @@
+<?xml version="1.0" encoding="utf-8" standalone="no"?>
+<ncx:ncx xmlns:ncx="http://www.daisy.org/z3986/2005/ncx/" version="2005-1">
+  <ncx:head>
+    <ncx:meta name="cover" content="cover"/>
+    <ncx:meta name="dtb:depth" content="-1"/>
+    <ncx:meta name="dtb:totalPageCount" content="0"/>
+    <ncx:meta name="dtb:maxPageNumber" content="0"/>
+  </ncx:head>
+  <ncx:docTitle>
+    <ncx:text>Java Concurrency in Practice</ncx:text>
+  </ncx:docTitle>
+  <ncx:navMap>
+    <ncx:navPoint id="id1468197" playOrder="1">
+      <ncx:navLabel>
+        <ncx:text>Java Concurrency in Practice</ncx:text>
+      </ncx:navLabel>
+      <ncx:content src="index.html"/>
+      <ncx:navPoint id="id1468237" playOrder="2">
+        <ncx:navLabel>
+          <ncx:text>Copyright</ncx:text>
+        </ncx:navLabel>
+        <ncx:content src="pr01.html"/>
+        <ncx:navPoint id="id1468403" playOrder="3">
+          <ncx:navLabel>
+            <ncx:text>Dedication</ncx:text>
+          </ncx:navLabel>
+          <ncx:content src="pr01.html#ded01"/>
+        </ncx:navPoint>
+      </ncx:navPoint>
+      <ncx:navPoint id="id1467767" playOrder="4">
+        <ncx:navLabel>
+          <ncx:text>Advance Praise for Java Concurrency in Practice</ncx:text>
+        </ncx:navLabel>
+        <ncx:content src="pr02.html"/>
+      </ncx:navPoint>
+      <ncx:navPoint id="id1468552" playOrder="5">
+        <ncx:navLabel>
+          <ncx:text>Listings</ncx:text>
+        </ncx:navLabel>
+        <ncx:content src="pr03.html"/>
+      </ncx:navPoint>
+      <ncx:navPoint id="id1468611" playOrder="6">
+        <ncx:navLabel>
+          <ncx:text>Preface</ncx:text>
+        </ncx:navLabel>
+        <ncx:content src="pr04.html"/>
+        <ncx:navPoint id="id1475137" playOrder="7">
+          <ncx:navLabel>
+            <ncx:text>How to Use this Book</ncx:text>
+          </ncx:navLabel>
+          <ncx:content src="pr04.html#pref03lev1sec1"/>
+        </ncx:navPoint>
+        <ncx:navPoint id="id1475148" playOrder="8">
+          <ncx:navLabel>
+            <ncx:text>Code Examples</ncx:text>
+          </ncx:navLabel>
+          <ncx:content src="pr04s02.html"/>
+        </ncx:navPoint>
+        <ncx:navPoint id="id1475748" playOrder="9">
+          <ncx:navLabel>
+            <ncx:text>Acknowledgments</ncx:text>
+          </ncx:navLabel>
+          <ncx:content src="pr04s03.html"/>
+        </ncx:navPoint>
+      </ncx:navPoint>
+      <ncx:navPoint id="id1475816" playOrder="10">
+        <ncx:navLabel>
+          <ncx:text>1. Introduction</ncx:text>
+        </ncx:navLabel>
+        <ncx:content src="ch01.html"/>
+        <ncx:navPoint id="id1476156" playOrder="11">
+          <ncx:navLabel>
+            <ncx:text>1.1. A (Very) Brief History of Concurrency</ncx:text>
+          </ncx:navLabel>
+          <ncx:content src="ch01.html#ch01lev1sec1"/>
+        </ncx:navPoint>
+        <ncx:navPoint id="id1476176" playOrder="12">
+          <ncx:navLabel>
+            <ncx:text>1.2. Benefits of Threads</ncx:text>
+          </ncx:navLabel>
+          <ncx:content src="ch01s02.html"/>
+          <ncx:navPoint id="id1477002" playOrder="13">
+            <ncx:navLabel>
+              <ncx:text>1.2.1. Exploiting Multiple Processors</ncx:text>
+            </ncx:navLabel>
+            <ncx:content src="ch01s02.html#ch01lev2sec1"/>
+          </ncx:navPoint>
+          <ncx:navPoint id="id1477043" playOrder="14">
+            <ncx:navLabel>
+              <ncx:text>1.2.2. Simplicity of Modeling</ncx:text>
+            </ncx:navLabel>
+            <ncx:content src="ch01s02.html#ch01lev2sec2"/>
+          </ncx:navPoint>
+          <ncx:navPoint id="id1477275" playOrder="15">
+            <ncx:navLabel>
+              <ncx:text>1.2.3. Simplified Handling of Asynchronous Events</ncx:text>
+            </ncx:navLabel>
+            <ncx:content src="ch01s02.html#ch01lev2sec3"/>
+          </ncx:navPoint>
+          <ncx:navPoint id="id1477347" playOrder="16">
+            <ncx:navLabel>
+              <ncx:text>1.2.4. More Responsive User Interfaces</ncx:text>
+            </ncx:navLabel>
+            <ncx:content src="ch01s02.html#ch01lev2sec4"/>
+          </ncx:navPoint>
+        </ncx:navPoint>
+        <ncx:navPoint id="id1477783" playOrder="17">
+          <ncx:navLabel>
+            <ncx:text>1.3. Risks of Threads</ncx:text>
+          </ncx:navLabel>
+          <ncx:content src="ch01s03.html"/>
+          <ncx:navPoint id="id1477815" playOrder="18">
+            <ncx:navLabel>
+              <ncx:text>1.3.1. Safety Hazards</ncx:text>
+            </ncx:navLabel>
+            <ncx:content src="ch01s03.html#ch01lev2sec5"/>
+          </ncx:navPoint>
+          <ncx:navPoint id="id1478844" playOrder="19">
+            <ncx:navLabel>
+              <ncx:text>1.3.2. Liveness Hazards</ncx:text>
+            </ncx:navLabel>
+            <ncx:content src="ch01s03.html#ch01lev2sec6"/>
+          </ncx:navPoint>
+          <ncx:navPoint id="id1480094" playOrder="20">
+            <ncx:navLabel>
+              <ncx:text>1.3.3. Performance Hazards</ncx:text>
+            </ncx:navLabel>
+            <ncx:content src="ch01s03.html#ch01lev2sec7"/>
+          </ncx:navPoint>
+        </ncx:navPoint>
+        <ncx:navPoint id="id1480148" playOrder="21">
+          <ncx:navLabel>
+            <ncx:text>1.4. Threads are Everywhere</ncx:text>
+          </ncx:navLabel>
+          <ncx:content src="ch01s04.html"/>
+        </ncx:navPoint>
+      </ncx:navPoint>
+      <ncx:navPoint id="id1480159" playOrder="22">
+        <ncx:navLabel>
+          <ncx:text>I. Fundamentals</ncx:text>
+        </ncx:navLabel>
+        <ncx:content src="pt01.html"/>
+        <ncx:navPoint id="id1481040" playOrder="23">
+          <ncx:navLabel>
+            <ncx:text>2. Thread Safety</ncx:text>
+          </ncx:navLabel>
+          <ncx:content src="ch02.html"/>
+          <ncx:navPoint id="id1483938" playOrder="24">
+            <ncx:navLabel>
+              <ncx:text>2.1. What is Thread Safety?</ncx:text>
+            </ncx:navLabel>
+            <ncx:content src="ch02.html#ch02lev1sec1"/>
+            <ncx:navPoint id="id1484077" playOrder="25">
+              <ncx:navLabel>
+                <ncx:text>2.1.1. Example: A Stateless Servlet</ncx:text>
+              </ncx:navLabel>
+              <ncx:content src="ch02.html#ch02lev2sec1"/>
+            </ncx:navPoint>
+          </ncx:navPoint>
+          <ncx:navPoint id="id1483948" playOrder="26">
+            <ncx:navLabel>
+              <ncx:text>2.2. Atomicity</ncx:text>
+            </ncx:navLabel>
+            <ncx:content src="ch02s02.html"/>
+            <ncx:navPoint id="id1485007" playOrder="27">
+              <ncx:navLabel>
+                <ncx:text>2.2.1. Race Conditions</ncx:text>
+              </ncx:navLabel>
+              <ncx:content src="ch02s02.html#ch02lev2sec2"/>
+            </ncx:navPoint>
+            <ncx:navPoint id="id1485291" playOrder="28">
+              <ncx:navLabel>
+                <ncx:text>2.2.2. Example: Race Conditions in Lazy Initialization</ncx:text>
+              </ncx:navLabel>
+              <ncx:content src="ch02s02.html#ch02lev2sec3"/>
+            </ncx:navPoint>
+            <ncx:navPoint id="id1487315" playOrder="29">
+              <ncx:navLabel>
+                <ncx:text>2.2.3. Compound Actions</ncx:text>
+              </ncx:navLabel>
+              <ncx:content src="ch02s02.html#ch02lev2sec4"/>
+            </ncx:navPoint>
+          </ncx:navPoint>
+          <ncx:navPoint id="id1487758" playOrder="30">
+            <ncx:navLabel>
+              <ncx:text>2.3. Locking</ncx:text>
+            </ncx:navLabel>
+            <ncx:content src="ch02s03.html"/>
+            <ncx:navPoint id="id1488812" playOrder="31">
+              <ncx:navLabel>
+                <ncx:text>2.3.1. Intrinsic Locks</ncx:text>
+              </ncx:navLabel>
+              <ncx:content src="ch02s03.html#ch02lev2sec5"/>
+            </ncx:navPoint>
+            <ncx:navPoint id="id1489253" playOrder="32">
+              <ncx:navLabel>
+                <ncx:text>2.3.2. Reentrancy</ncx:text>
+              </ncx:navLabel>
+              <ncx:content src="ch02s03.html#ch02lev2sec6"/>
+            </ncx:navPoint>
+          </ncx:navPoint>
+          <ncx:navPoint id="id1487770" playOrder="33">
+            <ncx:navLabel>
+              <ncx:text>2.4. Guarding State with Locks</ncx:text>
+            </ncx:navLabel>
+            <ncx:content src="ch02s04.html"/>
+          </ncx:navPoint>
+          <ncx:navPoint id="id1489675" playOrder="34">
+            <ncx:navLabel>
+              <ncx:text>2.5. Liveness and Performance</ncx:text>
+            </ncx:navLabel>
+            <ncx:content src="ch02s05.html"/>
+          </ncx:navPoint>
+        </ncx:navPoint>
+        <ncx:navPoint id="id1481050" playOrder="35">
+          <ncx:navLabel>
+            <ncx:text>3. Sharing Objects</ncx:text>
+          </ncx:navLabel>
+          <ncx:content src="ch03.html"/>
+          <ncx:navPoint id="id1491535" playOrder="36">
+            <ncx:navLabel>
+              <ncx:text>3.1. Visibility</ncx:text>
+            </ncx:navLabel>
+            <ncx:content src="ch03.html#ch03lev1sec1"/>
+            <ncx:navPoint id="id1492550" playOrder="37">
+              <ncx:navLabel>
+                <ncx:text>3.1.1. Stale Data</ncx:text>
+              </ncx:navLabel>
+              <ncx:content src="ch03.html#ch03lev2sec1"/>
+            </ncx:navPoint>
+            <ncx:navPoint id="id1492778" playOrder="38">
+              <ncx:navLabel>
+                <ncx:text>3.1.2. Nonatomic 64-bit Operations</ncx:text>
+              </ncx:navLabel>
+              <ncx:content src="ch03.html#ch03lev2sec2"/>
+            </ncx:navPoint>
+            <ncx:navPoint id="id1493051" playOrder="39">
+              <ncx:navLabel>
+                <ncx:text>3.1.3. Locking and Visibility</ncx:text>
+              </ncx:navLabel>
+              <ncx:content src="ch03.html#ch03lev2sec3"/>
+            </ncx:navPoint>
+            <ncx:navPoint id="id1493288" playOrder="40">
+              <ncx:navLabel>
+                <ncx:text>3.1.4. Volatile Variables</ncx:text>
+              </ncx:navLabel>
+              <ncx:content src="ch03.html#ch03lev2sec4"/>
+            </ncx:navPoint>
+          </ncx:navPoint>
+          <ncx:navPoint id="id1493297" playOrder="41">
+            <ncx:navLabel>
+              <ncx:text>3.2. Publication and Escape</ncx:text>
+            </ncx:navLabel>
+            <ncx:content src="ch03s02.html"/>
+            <ncx:navPoint id="id1495018" playOrder="42">
+              <ncx:navLabel>
+                <ncx:text>3.2.1. Safe Construction Practices</ncx:text>
+              </ncx:navLabel>
+              <ncx:content src="ch03s02.html#ch03lev2sec5"/>
+            </ncx:navPoint>
+          </ncx:navPoint>
+          <ncx:navPoint id="id1494385" playOrder="43">
+            <ncx:navLabel>
+              <ncx:text>3.3. Thread Confinement</ncx:text>
+            </ncx:navLabel>
+            <ncx:content src="ch03s03.html"/>
+            <ncx:navPoint id="id1495974" playOrder="44">
+              <ncx:navLabel>
+                <ncx:text>3.3.1. Ad-hoc Thread Confinement</ncx:text>
+              </ncx:navLabel>
+              <ncx:content src="ch03s03.html#ch03lev2sec6"/>
+            </ncx:navPoint>
+            <ncx:navPoint id="id1496045" playOrder="45">
+              <ncx:navLabel>
+                <ncx:text>3.3.2. Stack Confinement</ncx:text>
+              </ncx:navLabel>
+              <ncx:content src="ch03s03.html#ch03lev2sec7"/>
+            </ncx:navPoint>
+            <ncx:navPoint id="id1496783" playOrder="46">
+              <ncx:navLabel>
+                <ncx:text>3.3.3. ThreadLocal</ncx:text>
+              </ncx:navLabel>
+              <ncx:content src="ch03s03.html#ch03lev2sec8"/>
+            </ncx:navPoint>
+          </ncx:navPoint>
+          <ncx:navPoint id="id1495513" playOrder="47">
+            <ncx:navLabel>
+              <ncx:text>3.4. Immutability</ncx:text>
+            </ncx:navLabel>
+            <ncx:content src="ch03s04.html"/>
+            <ncx:navPoint id="id1497690" playOrder="48">
+              <ncx:navLabel>
+                <ncx:text>3.4.1. Final Fields</ncx:text>
+              </ncx:navLabel>
+              <ncx:content src="ch03s04.html#ch03lev2sec9"/>
+            </ncx:navPoint>
+            <ncx:navPoint id="id1498188" playOrder="49">
+              <ncx:navLabel>
+                <ncx:text>3.4.2. Example: Using Volatile to Publish Immutable Objects</ncx:text>
+              </ncx:navLabel>
+              <ncx:content src="ch03s04.html#ch03lev2sec10"/>
+            </ncx:navPoint>
+          </ncx:navPoint>
+          <ncx:navPoint id="id1497295" playOrder="50">
+            <ncx:navLabel>
+              <ncx:text>3.5. Safe Publication</ncx:text>
+            </ncx:navLabel>
+            <ncx:content src="ch03s05.html"/>
+            <ncx:navPoint id="id1498696" playOrder="51">
+              <ncx:navLabel>
+                <ncx:text>3.5.1. Improper Publication: When Good Objects Go Bad</ncx:text>
+              </ncx:navLabel>
+              <ncx:content src="ch03s05.html#ch03lev2sec11"/>
+            </ncx:navPoint>
+            <ncx:navPoint id="id1499128" playOrder="52">
+              <ncx:navLabel>
+                <ncx:text>3.5.2. Immutable Objects and Initialization Safety</ncx:text>
+              </ncx:navLabel>
+              <ncx:content src="ch03s05.html#ch03lev2sec12"/>
+            </ncx:navPoint>
+            <ncx:navPoint id="id1499220" playOrder="53">
+              <ncx:navLabel>
+                <ncx:text>3.5.3. Safe Publication Idioms</ncx:text>
+              </ncx:navLabel>
+              <ncx:content src="ch03s05.html#ch03lev2sec13"/>
+            </ncx:navPoint>
+            <ncx:navPoint id="id1499666" playOrder="54">
+              <ncx:navLabel>
+                <ncx:text>3.5.4. Effectively Immutable Objects</ncx:text>
+              </ncx:navLabel>
+              <ncx:content src="ch03s05.html#ch03lev2sec14"/>
+            </ncx:navPoint>
+            <ncx:navPoint id="id1499790" playOrder="55">
+              <ncx:navLabel>
+                <ncx:text>3.5.5. Mutable Objects</ncx:text>
+              </ncx:navLabel>
+              <ncx:content src="ch03s05.html#ch03lev2sec15"/>
+            </ncx:navPoint>
+            <ncx:navPoint id="id1500686" playOrder="56">
+              <ncx:navLabel>
+                <ncx:text>3.5.6. Sharing Objects Safely</ncx:text>
+              </ncx:navLabel>
+              <ncx:content src="ch03s05.html#ch03lev2sec16"/>
+            </ncx:navPoint>
+          </ncx:navPoint>
+        </ncx:navPoint>
+        <ncx:navPoint id="id1498478" playOrder="57">
+          <ncx:navLabel>
+            <ncx:text>4. Composing Objects</ncx:text>
+          </ncx:navLabel>
+          <ncx:content src="ch04.html"/>
+          <ncx:navPoint id="id1501198" playOrder="58">
+            <ncx:navLabel>
+              <ncx:text>4.1. Designing a Thread-safe Class</ncx:text>
+            </ncx:navLabel>
+            <ncx:content src="ch04.html#ch04lev1sec1"/>
+            <ncx:navPoint id="id1501704" playOrder="59">
+              <ncx:navLabel>
+                <ncx:text>4.1.1. Gathering Synchronization Requirements</ncx:text>
+              </ncx:navLabel>
+              <ncx:content src="ch04.html#ch04lev2sec1"/>
+            </ncx:navPoint>
+            <ncx:navPoint id="id1502227" playOrder="60">
+              <ncx:navLabel>
+                <ncx:text>4.1.2. State-dependent Operations</ncx:text>
+              </ncx:navLabel>
+              <ncx:content src="ch04.html#ch04lev2sec2"/>
+            </ncx:navPoint>
+            <ncx:navPoint id="id1502304" playOrder="61">
+              <ncx:navLabel>
+                <ncx:text>4.1.3. State Ownership</ncx:text>
+              </ncx:navLabel>
+              <ncx:content src="ch04.html#ch04lev2sec3"/>
+            </ncx:navPoint>
+          </ncx:navPoint>
+          <ncx:navPoint id="id1502689" playOrder="62">
+            <ncx:navLabel>
+              <ncx:text>4.2. Instance Confinement</ncx:text>
+            </ncx:navLabel>
+            <ncx:content src="ch04s02.html"/>
+            <ncx:navPoint id="id1503752" playOrder="63">
+              <ncx:navLabel>
+                <ncx:text>4.2.1. The Java Monitor Pattern</ncx:text>
+              </ncx:navLabel>
+              <ncx:content src="ch04s02.html#ch04lev2sec4"/>
+            </ncx:navPoint>
+            <ncx:navPoint id="id1504323" playOrder="64">
+              <ncx:navLabel>
+                <ncx:text>4.2.2. Example: Tracking Fleet Vehicles</ncx:text>
+              </ncx:navLabel>
+              <ncx:content src="ch04s02.html#ch04lev2sec5"/>
+            </ncx:navPoint>
+          </ncx:navPoint>
+          <ncx:navPoint id="id1502768" playOrder="65">
+            <ncx:navLabel>
+              <ncx:text>4.3. Delegating Thread Safety</ncx:text>
+            </ncx:navLabel>
+            <ncx:content src="ch04s03.html"/>
+            <ncx:navPoint id="id1505089" playOrder="66">
+              <ncx:navLabel>
+                <ncx:text>4.3.1. Example: Vehicle Tracker Using Delegation</ncx:text>
+              </ncx:navLabel>
+              <ncx:content src="ch04s03.html#ch04lev2sec6"/>
+            </ncx:navPoint>
+            <ncx:navPoint id="id1505402" playOrder="67">
+              <ncx:navLabel>
+                <ncx:text>4.3.2. Independent State Variables</ncx:text>
+              </ncx:navLabel>
+              <ncx:content src="ch04s03.html#ch04lev2sec7"/>
+            </ncx:navPoint>
+            <ncx:navPoint id="id1505742" playOrder="68">
+              <ncx:navLabel>
+                <ncx:text>4.3.3. When Delegation Fails</ncx:text>
+              </ncx:navLabel>
+              <ncx:content src="ch04s03.html#ch04lev2sec8"/>
+            </ncx:navPoint>
+            <ncx:navPoint id="id1506312" playOrder="69">
+              <ncx:navLabel>
+                <ncx:text>4.3.4. Publishing Underlying State Variables</ncx:text>
+              </ncx:navLabel>
+              <ncx:content src="ch04s03.html#ch04lev2sec9"/>
+            </ncx:navPoint>
+            <ncx:navPoint id="id1506398" playOrder="70">
+              <ncx:navLabel>
+                <ncx:text>4.3.5. Example: Vehicle Tracker that Publishes Its State</ncx:text>
+              </ncx:navLabel>
+              <ncx:content src="ch04s03.html#ch04lev2sec10"/>
+            </ncx:navPoint>
+          </ncx:navPoint>
+          <ncx:navPoint id="id1504707" playOrder="71">
+            <ncx:navLabel>
+              <ncx:text>4.4. Adding Functionality to Existing Thread-safe Classes</ncx:text>
+            </ncx:navLabel>
+            <ncx:content src="ch04s04.html"/>
+            <ncx:navPoint id="id1507548" playOrder="72">
+              <ncx:navLabel>
+                <ncx:text>4.4.1. Client-side Locking</ncx:text>
+              </ncx:navLabel>
+              <ncx:content src="ch04s04.html#ch04lev2sec11"/>
+            </ncx:navPoint>
+            <ncx:navPoint id="id1507557" playOrder="73">
+              <ncx:navLabel>
+                <ncx:text>4.4.2. Composition</ncx:text>
+              </ncx:navLabel>
+              <ncx:content src="ch04s04.html#ch04lev2sec12"/>
+            </ncx:navPoint>
+          </ncx:navPoint>
+          <ncx:navPoint id="id1507371" playOrder="74">
+            <ncx:navLabel>
+              <ncx:text>4.5. Documenting Synchronization Policies</ncx:text>
+            </ncx:navLabel>
+            <ncx:content src="ch04s05.html"/>
+            <ncx:navPoint id="id1509153" playOrder="75">
+              <ncx:navLabel>
+                <ncx:text>4.5.1. Interpreting Vague Documentation</ncx:text>
+              </ncx:navLabel>
+              <ncx:content src="ch04s05.html#ch04lev2sec13"/>
+            </ncx:navPoint>
+          </ncx:navPoint>
+        </ncx:navPoint>
+        <ncx:navPoint id="id1508970" playOrder="76">
+          <ncx:navLabel>
+            <ncx:text>5. Building Blocks</ncx:text>
+          </ncx:navLabel>
+          <ncx:content src="ch05.html"/>
+          <ncx:navPoint id="id1509896" playOrder="77">
+            <ncx:navLabel>
+              <ncx:text>5.1. Synchronized Collections</ncx:text>
+            </ncx:navLabel>
+            <ncx:content src="ch05.html#ch05lev1sec1"/>
+            <ncx:navPoint id="id1509938" playOrder="78">
+              <ncx:navLabel>
+                <ncx:text>5.1.1. Problems with Synchronized Collections</ncx:text>
+              </ncx:navLabel>
+              <ncx:content src="ch05.html#ch05lev2sec1"/>
+            </ncx:navPoint>
+            <ncx:navPoint id="id1510637" playOrder="79">
+              <ncx:navLabel>
+                <ncx:text>5.1.2. Iterators and Concurrentmodificationexception</ncx:text>
+              </ncx:navLabel>
+              <ncx:content src="ch05.html#ch05lev2sec2"/>
+            </ncx:navPoint>
+            <ncx:navPoint id="id1511678" playOrder="80">
+              <ncx:navLabel>
+                <ncx:text>5.1.3. Hidden Iterators</ncx:text>
+              </ncx:navLabel>
+              <ncx:content src="ch05.html#ch05lev2sec3"/>
+            </ncx:navPoint>
+          </ncx:navPoint>
+          <ncx:navPoint id="id1511898" playOrder="81">
+            <ncx:navLabel>
+              <ncx:text>5.2. Concurrent Collections</ncx:text>
+            </ncx:navLabel>
+            <ncx:content src="ch05s02.html"/>
+            <ncx:navPoint id="id1513405" playOrder="82">
+              <ncx:navLabel>
+                <ncx:text>5.2.1. ConcurrentHashMap</ncx:text>
+              </ncx:navLabel>
+              <ncx:content src="ch05s02.html#ch05lev2sec4"/>
+            </ncx:navPoint>
+            <ncx:navPoint id="id1514021" playOrder="83">
+              <ncx:navLabel>
+                <ncx:text>5.2.2. Additional Atomic Map Operations</ncx:text>
+              </ncx:navLabel>
+              <ncx:content src="ch05s02.html#ch05lev2sec5"/>
+            </ncx:navPoint>
+            <ncx:navPoint id="id1514082" playOrder="84">
+              <ncx:navLabel>
+                <ncx:text>5.2.3. CopyOnWriteArrayList</ncx:text>
+              </ncx:navLabel>
+              <ncx:content src="ch05s02.html#ch05lev2sec6"/>
+            </ncx:navPoint>
+          </ncx:navPoint>
+          <ncx:navPoint id="id1512342" playOrder="85">
+            <ncx:navLabel>
+              <ncx:text>5.3. Blocking Queues and the Producer-consumer Pattern</ncx:text>
+            </ncx:navLabel>
+            <ncx:content src="ch05s03.html"/>
+            <ncx:navPoint id="id1515294" playOrder="86">
+              <ncx:navLabel>
+                <ncx:text>5.3.1. Example: Desktop Search</ncx:text>
+              </ncx:navLabel>
+              <ncx:content src="ch05s03.html#ch05lev2sec7"/>
+            </ncx:navPoint>
+            <ncx:navPoint id="id1515921" playOrder="87">
+              <ncx:navLabel>
+                <ncx:text>5.3.2. Serial Thread Confinement</ncx:text>
+              </ncx:navLabel>
+              <ncx:content src="ch05s03.html#ch05lev2sec8"/>
+            </ncx:navPoint>
+            <ncx:navPoint id="id1516063" playOrder="88">
+              <ncx:navLabel>
+                <ncx:text>5.3.3. Deques and Work Stealing</ncx:text>
+              </ncx:navLabel>
+              <ncx:content src="ch05s03.html#ch05lev2sec9"/>
+            </ncx:navPoint>
+          </ncx:navPoint>
+          <ncx:navPoint id="id1514694" playOrder="89">
+            <ncx:navLabel>
+              <ncx:text>5.4. Blocking and Interruptible Methods</ncx:text>
+            </ncx:navLabel>
+            <ncx:content src="ch05s04.html"/>
+          </ncx:navPoint>
+          <ncx:navPoint id="id1516997" playOrder="90">
+            <ncx:navLabel>
+              <ncx:text>5.5. Synchronizers</ncx:text>
+            </ncx:navLabel>
+            <ncx:content src="ch05s05.html"/>
+            <ncx:navPoint id="id1518468" playOrder="91">
+              <ncx:navLabel>
+                <ncx:text>5.5.1. Latches</ncx:text>
+              </ncx:navLabel>
+              <ncx:content src="ch05s05.html#ch05lev2sec10"/>
+            </ncx:navPoint>
+            <ncx:navPoint id="id1519101" playOrder="92">
+              <ncx:navLabel>
+                <ncx:text>5.5.2. FutureTask</ncx:text>
+              </ncx:navLabel>
+              <ncx:content src="ch05s05.html#ch05lev2sec11"/>
+            </ncx:navPoint>
+            <ncx:navPoint id="id1519110" playOrder="93">
+              <ncx:navLabel>
+                <ncx:text>5.5.3. Semaphores</ncx:text>
+              </ncx:navLabel>
+              <ncx:content src="ch05s05.html#ch05lev2sec12"/>
+            </ncx:navPoint>
+            <ncx:navPoint id="id1521115" playOrder="94">
+              <ncx:navLabel>
+                <ncx:text>5.5.4. Barriers</ncx:text>
+              </ncx:navLabel>
+              <ncx:content src="ch05s05.html#ch05lev2sec13"/>
+            </ncx:navPoint>
+          </ncx:navPoint>
+          <ncx:navPoint id="id1521857" playOrder="95">
+            <ncx:navLabel>
+              <ncx:text>5.6. Building an Efficient, Scalable Result Cache</ncx:text>
+            </ncx:navLabel>
+            <ncx:content src="ch05s06.html"/>
+          </ncx:navPoint>
+          <ncx:navPoint id="id1521868" playOrder="96">
+            <ncx:navLabel>
+              <ncx:text>Summary of Part I</ncx:text>
+            </ncx:navLabel>
+            <ncx:content src="ch05s07.html"/>
+          </ncx:navPoint>
+        </ncx:navPoint>
+      </ncx:navPoint>
+      <ncx:navPoint id="id1509341" playOrder="97">
+        <ncx:navLabel>
+          <ncx:text>II. Structuring Concurrent Applications</ncx:text>
+        </ncx:navLabel>
+        <ncx:content src="pt02.html"/>
+        <ncx:navPoint id="id1523758" playOrder="98">
+          <ncx:navLabel>
+            <ncx:text>6. Task Execution</ncx:text>
+          </ncx:navLabel>
+          <ncx:content src="ch06.html"/>
+          <ncx:navPoint id="id1524853" playOrder="99">
+            <ncx:navLabel>
+              <ncx:text>6.1. Executing Tasks in Threads</ncx:text>
+            </ncx:navLabel>
+            <ncx:content src="ch06.html#ch06lev1sec1"/>
+            <ncx:navPoint id="id1524919" playOrder="100">
+              <ncx:navLabel>
+                <ncx:text>6.1.1. Executing Tasks Sequentially</ncx:text>
+              </ncx:navLabel>
+              <ncx:content src="ch06.html#ch06lev2sec1"/>
+            </ncx:navPoint>
+            <ncx:navPoint id="id1525549" playOrder="101">
+              <ncx:navLabel>
+                <ncx:text>6.1.2. Explicitly Creating Threads for Tasks</ncx:text>
+              </ncx:navLabel>
+              <ncx:content src="ch06.html#ch06lev2sec2"/>
+            </ncx:navPoint>
+            <ncx:navPoint id="id1525900" playOrder="102">
+              <ncx:navLabel>
+                <ncx:text>6.1.3. Disadvantages of Unbounded Thread Creation</ncx:text>
+              </ncx:navLabel>
+              <ncx:content src="ch06.html#ch06lev2sec3"/>
+            </ncx:navPoint>
+          </ncx:navPoint>
+          <ncx:navPoint id="id1526777" playOrder="103">
+            <ncx:navLabel>
+              <ncx:text>6.2. The Executor Framework</ncx:text>
+            </ncx:navLabel>
+            <ncx:content src="ch06s02.html"/>
+            <ncx:navPoint id="id1527309" playOrder="104">
+              <ncx:navLabel>
+                <ncx:text>6.2.1. Example: Web Server Using Executor</ncx:text>
+              </ncx:navLabel>
+              <ncx:content src="ch06s02.html#ch06lev2sec4"/>
+            </ncx:navPoint>
+            <ncx:navPoint id="id1527639" playOrder="105">
+              <ncx:navLabel>
+                <ncx:text>6.2.2. Execution Policies</ncx:text>
+              </ncx:navLabel>
+              <ncx:content src="ch06s02.html#ch06lev2sec5"/>
+            </ncx:navPoint>
+            <ncx:navPoint id="id1528161" playOrder="106">
+              <ncx:navLabel>
+                <ncx:text>6.2.3. Thread Pools</ncx:text>
+              </ncx:navLabel>
+              <ncx:content src="ch06s02.html#ch06lev2sec6"/>
+            </ncx:navPoint>
+            <ncx:navPoint id="id1528169" playOrder="107">
+              <ncx:navLabel>
+                <ncx:text>6.2.4. Executor Lifecycle</ncx:text>
+              </ncx:navLabel>
+              <ncx:content src="ch06s02.html#ch06lev2sec7"/>
+            </ncx:navPoint>
+            <ncx:navPoint id="id1529365" playOrder="108">
+              <ncx:navLabel>
+                <ncx:text>6.2.5. Delayed and Periodic Tasks</ncx:text>
+              </ncx:navLabel>
+              <ncx:content src="ch06s02.html#ch06lev2sec8"/>
+            </ncx:navPoint>
+          </ncx:navPoint>
+          <ncx:navPoint id="id1526786" playOrder="109">
+            <ncx:navLabel>
+              <ncx:text>6.3. Finding Exploitable Parallelism</ncx:text>
+            </ncx:navLabel>
+            <ncx:content src="ch06s03.html"/>
+            <ncx:navPoint id="id1530387" playOrder="110">
+              <ncx:navLabel>
+                <ncx:text>6.3.1. Example: Sequential Page Renderer</ncx:text>
+              </ncx:navLabel>
+              <ncx:content src="ch06s03.html#ch06lev2sec9"/>
+            </ncx:navPoint>
+            <ncx:navPoint id="id1530489" playOrder="111">
+              <ncx:navLabel>
+                <ncx:text>6.3.2. Result-bearing Tasks: Callable and Future</ncx:text>
+              </ncx:navLabel>
+              <ncx:content src="ch06s03.html#ch06lev2sec10"/>
+            </ncx:navPoint>
+            <ncx:navPoint id="id1531844" playOrder="112">
+              <ncx:navLabel>
+                <ncx:text>6.3.3. Example: Page Renderer with Future</ncx:text>
+              </ncx:navLabel>
+              <ncx:content src="ch06s03.html#ch06lev2sec11"/>
+            </ncx:navPoint>
+            <ncx:navPoint id="id1532127" playOrder="113">
+              <ncx:navLabel>
+                <ncx:text>6.3.4. Limitations of Parallelizing Heterogeneous Tasks</ncx:text>
+              </ncx:navLabel>
+              <ncx:content src="ch06s03.html#ch06lev2sec12"/>
+            </ncx:navPoint>
+            <ncx:navPoint id="id1532729" playOrder="114">
+              <ncx:navLabel>
+                <ncx:text>6.3.5. CompletionService: Executor Meets BlockingQueue</ncx:text>
+              </ncx:navLabel>
+              <ncx:content src="ch06s03.html#ch06lev2sec13"/>
+            </ncx:navPoint>
+            <ncx:navPoint id="id1532903" playOrder="115">
+              <ncx:navLabel>
+                <ncx:text>6.3.6. Example: Page Renderer with CompletionService</ncx:text>
+              </ncx:navLabel>
+              <ncx:content src="ch06s03.html#ch06lev2sec14"/>
+            </ncx:navPoint>
+            <ncx:navPoint id="id1533164" playOrder="116">
+              <ncx:navLabel>
+                <ncx:text>6.3.7. Placing Time Limits on Tasks</ncx:text>
+              </ncx:navLabel>
+              <ncx:content src="ch06s03.html#ch06lev2sec15"/>
+            </ncx:navPoint>
+            <ncx:navPoint id="id1533534" playOrder="117">
+              <ncx:navLabel>
+                <ncx:text>6.3.8. Example: A Travel Reservations Portal</ncx:text>
+              </ncx:navLabel>
+              <ncx:content src="ch06s03.html#ch06lev2sec16"/>
+            </ncx:navPoint>
+          </ncx:navPoint>
+          <ncx:navPoint id="id1530126" playOrder="118">
+            <ncx:navLabel>
+              <ncx:text>Summary</ncx:text>
+            </ncx:navLabel>
+            <ncx:content src="ch06s04.html"/>
+          </ncx:navPoint>
+        </ncx:navPoint>
+        <ncx:navPoint id="id1533800" playOrder="119">
+          <ncx:navLabel>
+            <ncx:text>7. Cancellation and Shutdown</ncx:text>
+          </ncx:navLabel>
+          <ncx:content src="ch07.html"/>
+          <ncx:navPoint id="id1534972" playOrder="120">
+            <ncx:navLabel>
+              <ncx:text>7.1. Task Cancellation</ncx:text>
+            </ncx:navLabel>
+            <ncx:content src="ch07.html#ch07lev1sec1"/>
+            <ncx:navPoint id="id1536424" playOrder="121">
+              <ncx:navLabel>
+                <ncx:text>7.1.1. Interruption</ncx:text>
+              </ncx:navLabel>
+              <ncx:content src="ch07.html#ch07lev2sec1"/>
+            </ncx:navPoint>
+            <ncx:navPoint id="id1537283" playOrder="122">
+              <ncx:navLabel>
+                <ncx:text>7.1.2. Interruption Policies</ncx:text>
+              </ncx:navLabel>
+              <ncx:content src="ch07.html#ch07lev2sec2"/>
+            </ncx:navPoint>
+            <ncx:navPoint id="id1537292" playOrder="123">
+              <ncx:navLabel>
+                <ncx:text>7.1.3. Responding to Interruption</ncx:text>
+              </ncx:navLabel>
+              <ncx:content src="ch07.html#ch07lev2sec3"/>
+            </ncx:navPoint>
+            <ncx:navPoint id="id1538048" playOrder="124">
+              <ncx:navLabel>
+                <ncx:text>7.1.4. Example: Timed Run</ncx:text>
+              </ncx:navLabel>
+              <ncx:content src="ch07.html#ch07lev2sec4"/>
+            </ncx:navPoint>
+            <ncx:navPoint id="id1539115" playOrder="125">
+              <ncx:navLabel>
+                <ncx:text>7.1.5. Cancellation Via Future</ncx:text>
+              </ncx:navLabel>
+              <ncx:content src="ch07.html#ch07lev2sec5"/>
+            </ncx:navPoint>
+            <ncx:navPoint id="id1539734" playOrder="126">
+              <ncx:navLabel>
+                <ncx:text>7.1.6. Dealing with Non-interruptible Blocking</ncx:text>
+              </ncx:navLabel>
+              <ncx:content src="ch07.html#ch07lev2sec6"/>
+            </ncx:navPoint>
+            <ncx:navPoint id="id1540470" playOrder="127">
+              <ncx:navLabel>
+                <ncx:text>7.1.7. Encapsulating Nonstandard Cancellation with newTaskFor</ncx:text>
+              </ncx:navLabel>
+              <ncx:content src="ch07.html#ch07lev2sec7"/>
+            </ncx:navPoint>
+          </ncx:navPoint>
+          <ncx:navPoint id="id1534982" playOrder="128">
+            <ncx:navLabel>
+              <ncx:text>7.2. Stopping a Thread-based Service</ncx:text>
+            </ncx:navLabel>
+            <ncx:content src="ch07s02.html"/>
+            <ncx:navPoint id="id1541350" playOrder="129">
+              <ncx:navLabel>
+                <ncx:text>7.2.1. Example: A Logging Service</ncx:text>
+              </ncx:navLabel>
+              <ncx:content src="ch07s02.html#ch07lev2sec8"/>
+            </ncx:navPoint>
+            <ncx:navPoint id="id1542080" playOrder="130">
+              <ncx:navLabel>
+                <ncx:text>7.2.2. ExecutorService Shutdown</ncx:text>
+              </ncx:navLabel>
+              <ncx:content src="ch07s02.html#ch07lev2sec9"/>
+            </ncx:navPoint>
+            <ncx:navPoint id="id1542581" playOrder="131">
+              <ncx:navLabel>
+                <ncx:text>7.2.3. Poison Pills</ncx:text>
+              </ncx:navLabel>
+              <ncx:content src="ch07s02.html#ch07lev2sec10"/>
+            </ncx:navPoint>
+            <ncx:navPoint id="id1542853" playOrder="132">
+              <ncx:navLabel>
+                <ncx:text>7.2.4. Example: A One-shot Execution Service</ncx:text>
+              </ncx:navLabel>
+              <ncx:content src="ch07s02.html#ch07lev2sec11"/>
+            </ncx:navPoint>
+            <ncx:navPoint id="id1543467" playOrder="133">
+              <ncx:navLabel>
+                <ncx:text>7.2.5. Limitations of Shutdownnow</ncx:text>
+              </ncx:navLabel>
+              <ncx:content src="ch07s02.html#ch07lev2sec12"/>
+            </ncx:navPoint>
+          </ncx:navPoint>
+          <ncx:navPoint id="id1541280" playOrder="134">
+            <ncx:navLabel>
+              <ncx:text>7.3. Handling Abnormal Thread Termination</ncx:text>
+            </ncx:navLabel>
+            <ncx:content src="ch07s03.html"/>
+            <ncx:navPoint id="id1544703" playOrder="135">
+              <ncx:navLabel>
+                <ncx:text>7.3.1. Uncaught Exception Handlers</ncx:text>
+              </ncx:navLabel>
+              <ncx:content src="ch07s03.html#ch07lev2sec13"/>
+            </ncx:navPoint>
+          </ncx:navPoint>
+          <ncx:navPoint id="id1545206" playOrder="136">
+            <ncx:navLabel>
+              <ncx:text>7.4. JVM Shutdown</ncx:text>
+            </ncx:navLabel>
+            <ncx:content src="ch07s04.html"/>
+            <ncx:navPoint id="id1545230" playOrder="137">
+              <ncx:navLabel>
+                <ncx:text>7.4.1. Shutdown Hooks</ncx:text>
+              </ncx:navLabel>
+              <ncx:content src="ch07s04.html#ch07lev2sec14"/>
+            </ncx:navPoint>
+            <ncx:navPoint id="id1545960" playOrder="138">
+              <ncx:navLabel>
+                <ncx:text>7.4.2. Daemon Threads</ncx:text>
+              </ncx:navLabel>
+              <ncx:content src="ch07s04.html#ch07lev2sec15"/>
+            </ncx:navPoint>
+            <ncx:navPoint id="id1546028" playOrder="139">
+              <ncx:navLabel>
+                <ncx:text>7.4.3. Finalizers</ncx:text>
+              </ncx:navLabel>
+              <ncx:content src="ch07s04.html#ch07lev2sec16"/>
+            </ncx:navPoint>
+          </ncx:navPoint>
+          <ncx:navPoint id="id1546166" playOrder="140">
+            <ncx:navLabel>
+              <ncx:text>Summary</ncx:text>
+            </ncx:navLabel>
+            <ncx:content src="ch07s05.html"/>
+          </ncx:navPoint>
+        </ncx:navPoint>
+        <ncx:navPoint id="id1533810" playOrder="141">
+          <ncx:navLabel>
+            <ncx:text>8. Applying Thread Pools</ncx:text>
+          </ncx:navLabel>
+          <ncx:content src="ch08.html"/>
+          <ncx:navPoint id="id1546215" playOrder="142">
+            <ncx:navLabel>
+              <ncx:text>8.1. Implicit Couplings Between Tasks and Execution Policies</ncx:text>
+            </ncx:navLabel>
+            <ncx:content src="ch08.html#ch08lev1sec1"/>
+            <ncx:navPoint id="id1547224" playOrder="143">
+              <ncx:navLabel>
+                <ncx:text>8.1.1. Thread Starvation Deadlock</ncx:text>
+              </ncx:navLabel>
+              <ncx:content src="ch08.html#ch08lev2sec1"/>
+            </ncx:navPoint>
+            <ncx:navPoint id="id1547558" playOrder="144">
+              <ncx:navLabel>
+                <ncx:text>8.1.2. Long-running Tasks</ncx:text>
+              </ncx:navLabel>
+              <ncx:content src="ch08.html#ch08lev2sec2"/>
+            </ncx:navPoint>
+          </ncx:navPoint>
+          <ncx:navPoint id="id1546692" playOrder="145">
+            <ncx:navLabel>
+              <ncx:text>8.2. Sizing Thread Pools</ncx:text>
+            </ncx:navLabel>
+            <ncx:content src="ch08s02.html"/>
+          </ncx:navPoint>
+          <ncx:navPoint id="id1548152" playOrder="146">
+            <ncx:navLabel>
+              <ncx:text>8.3. Configuring ThreadPoolExecutor</ncx:text>
+            </ncx:navLabel>
+            <ncx:content src="ch08s03.html"/>
+            <ncx:navPoint id="id1549003" playOrder="147">
+              <ncx:navLabel>
+                <ncx:text>8.3.1. Thread Creation and Teardown</ncx:text>
+              </ncx:navLabel>
+              <ncx:content src="ch08s03.html#ch08lev2sec3"/>
+            </ncx:navPoint>
+            <ncx:navPoint id="id1549742" playOrder="148">
+              <ncx:navLabel>
+                <ncx:text>8.3.2. Managing Queued Tasks</ncx:text>
+              </ncx:navLabel>
+              <ncx:content src="ch08s03.html#ch08lev2sec4"/>
+            </ncx:navPoint>
+            <ncx:navPoint id="id1550802" playOrder="149">
+              <ncx:navLabel>
+                <ncx:text>8.3.3. Saturation Policies</ncx:text>
+              </ncx:navLabel>
+              <ncx:content src="ch08s03.html#ch08lev2sec5"/>
+            </ncx:navPoint>
+            <ncx:navPoint id="id1551325" playOrder="150">
+              <ncx:navLabel>
+                <ncx:text>8.3.4. Thread Factories</ncx:text>
+              </ncx:navLabel>
+              <ncx:content src="ch08s03.html#ch08lev2sec6"/>
+            </ncx:navPoint>
+            <ncx:navPoint id="id1551331" playOrder="151">
+              <ncx:navLabel>
+                <ncx:text>8.3.5. Customizing ThreadPoolExecutor After Construction</ncx:text>
+              </ncx:navLabel>
+              <ncx:content src="ch08s03.html#ch08lev2sec7"/>
+            </ncx:navPoint>
+          </ncx:navPoint>
+          <ncx:navPoint id="id1552532" playOrder="152">
+            <ncx:navLabel>
+              <ncx:text>8.4. Extending ThreadPoolExecutor</ncx:text>
+            </ncx:navLabel>
+            <ncx:content src="ch08s04.html"/>
+            <ncx:navPoint id="id1552632" playOrder="153">
+              <ncx:navLabel>
+                <ncx:text>8.4.1. Example: Adding Statistics to a Thread Pool</ncx:text>
+              </ncx:navLabel>
+              <ncx:content src="ch08s04.html#ch08lev2sec8"/>
+            </ncx:navPoint>
+          </ncx:navPoint>
+          <ncx:navPoint id="id1552750" playOrder="154">
+            <ncx:navLabel>
+              <ncx:text>8.5. Parallelizing Recursive Algorithms</ncx:text>
+            </ncx:navLabel>
+            <ncx:content src="ch08s05.html"/>
+            <ncx:navPoint id="id1553309" playOrder="155">
+              <ncx:navLabel>
+                <ncx:text>8.5.1. Example: A Puzzle Framework</ncx:text>
+              </ncx:navLabel>
+              <ncx:content src="ch08s05.html#ch08lev2sec9"/>
+            </ncx:navPoint>
+          </ncx:navPoint>
+          <ncx:navPoint id="id1553320" playOrder="156">
+            <ncx:navLabel>
+              <ncx:text>Summary</ncx:text>
+            </ncx:navLabel>
+            <ncx:content src="ch08s06.html"/>
+          </ncx:navPoint>
+        </ncx:navPoint>
+        <ncx:navPoint id="id1554548" playOrder="157">
+          <ncx:navLabel>
+            <ncx:text>9. GUI Applications</ncx:text>
+          </ncx:navLabel>
+          <ncx:content src="ch09.html"/>
+          <ncx:navPoint id="id1554906" playOrder="158">
+            <ncx:navLabel>
+              <ncx:text>9.1. Why are GUIs Single-threaded?</ncx:text>
+            </ncx:navLabel>
+            <ncx:content src="ch09.html#ch09lev1sec1"/>
+            <ncx:navPoint id="id1555364" playOrder="159">
+              <ncx:navLabel>
+                <ncx:text>9.1.1. Sequential Event Processing</ncx:text>
+              </ncx:navLabel>
+              <ncx:content src="ch09.html#ch09lev2sec1"/>
+            </ncx:navPoint>
+            <ncx:navPoint id="id1556164" playOrder="160">
+              <ncx:navLabel>
+                <ncx:text>9.1.2. Thread Confinement in Swing</ncx:text>
+              </ncx:navLabel>
+              <ncx:content src="ch09.html#ch09lev2sec2"/>
+            </ncx:navPoint>
+          </ncx:navPoint>
+          <ncx:navPoint id="id1556537" playOrder="161">
+            <ncx:navLabel>
+              <ncx:text>9.2. Short-running GUI Tasks</ncx:text>
+            </ncx:navLabel>
+            <ncx:content src="ch09s02.html"/>
+          </ncx:navPoint>
+          <ncx:navPoint id="id1557397" playOrder="162">
+            <ncx:navLabel>
+              <ncx:text>9.3. Long-running GUI Tasks</ncx:text>
+            </ncx:navLabel>
+            <ncx:content src="ch09s03.html"/>
+            <ncx:navPoint id="id1557695" playOrder="163">
+              <ncx:navLabel>
+                <ncx:text>9.3.1. Cancellation</ncx:text>
+              </ncx:navLabel>
+              <ncx:content src="ch09s03.html#ch09lev2sec3"/>
+            </ncx:navPoint>
+            <ncx:navPoint id="id1557813" playOrder="164">
+              <ncx:navLabel>
+                <ncx:text>9.3.2. Progress and Completion Indication</ncx:text>
+              </ncx:navLabel>
+              <ncx:content src="ch09s03.html#ch09lev2sec4"/>
+            </ncx:navPoint>
+            <ncx:navPoint id="id1558277" playOrder="165">
+              <ncx:navLabel>
+                <ncx:text>9.3.3. SwingWorker</ncx:text>
+              </ncx:navLabel>
+              <ncx:content src="ch09s03.html#ch09lev2sec5"/>
+            </ncx:navPoint>
+          </ncx:navPoint>
+          <ncx:navPoint id="id1557407" playOrder="166">
+            <ncx:navLabel>
+              <ncx:text>9.4. Shared Data Models</ncx:text>
+            </ncx:navLabel>
+            <ncx:content src="ch09s04.html"/>
+            <ncx:navPoint id="id1558616" playOrder="167">
+              <ncx:navLabel>
+                <ncx:text>9.4.1. Thread-safe Data Models</ncx:text>
+              </ncx:navLabel>
+              <ncx:content src="ch09s04.html#ch09lev2sec6"/>
+            </ncx:navPoint>
+            <ncx:navPoint id="id1559111" playOrder="168">
+              <ncx:navLabel>
+                <ncx:text>9.4.2. Split Data Models</ncx:text>
+              </ncx:navLabel>
+              <ncx:content src="ch09s04.html#ch09lev2sec7"/>
+            </ncx:navPoint>
+          </ncx:navPoint>
+          <ncx:navPoint id="id1559207" playOrder="169">
+            <ncx:navLabel>
+              <ncx:text>9.5. Other Forms of Single-threaded Subsystems</ncx:text>
+            </ncx:navLabel>
+            <ncx:content src="ch09s05.html"/>
+          </ncx:navPoint>
+          <ncx:navPoint id="id1559264" playOrder="170">
+            <ncx:navLabel>
+              <ncx:text>Summary</ncx:text>
+            </ncx:navLabel>
+            <ncx:content src="ch09s06.html"/>
+          </ncx:navPoint>
+        </ncx:navPoint>
+      </ncx:navPoint>
+      <ncx:navPoint id="id1554569" playOrder="171">
+        <ncx:navLabel>
+          <ncx:text>III. Liveness, Performance, and Testing</ncx:text>
+        </ncx:navLabel>
+        <ncx:content src="pt03.html"/>
+        <ncx:navPoint id="id1559322" playOrder="172">
+          <ncx:navLabel>
+            <ncx:text>10. Avoiding Liveness Hazards</ncx:text>
+          </ncx:navLabel>
+          <ncx:content src="ch10.html"/>
+          <ncx:navPoint id="id1559350" playOrder="173">
+            <ncx:navLabel>
+              <ncx:text>10.1. Deadlock</ncx:text>
+            </ncx:navLabel>
+            <ncx:content src="ch10.html#ch10lev1sec1"/>
+            <ncx:navPoint id="id1560857" playOrder="174">
+              <ncx:navLabel>
+                <ncx:text>10.1.1. Lock-ordering Deadlocks</ncx:text>
+              </ncx:navLabel>
+              <ncx:content src="ch10.html#ch10lev2sec1"/>
+            </ncx:navPoint>
+            <ncx:navPoint id="id1561086" playOrder="175">
+              <ncx:navLabel>
+                <ncx:text>10.1.2. Dynamic Lock Order Deadlocks</ncx:text>
+              </ncx:navLabel>
+              <ncx:content src="ch10.html#ch10lev2sec2"/>
+            </ncx:navPoint>
+            <ncx:navPoint id="id1561094" playOrder="176">
+              <ncx:navLabel>
+                <ncx:text>10.1.3. Deadlocks Between Cooperating Objects</ncx:text>
+              </ncx:navLabel>
+              <ncx:content src="ch10.html#ch10lev2sec3"/>
+            </ncx:navPoint>
+            <ncx:navPoint id="id1562079" playOrder="177">
+              <ncx:navLabel>
+                <ncx:text>10.1.4. Open Calls</ncx:text>
+              </ncx:navLabel>
+              <ncx:content src="ch10.html#ch10lev2sec4"/>
+            </ncx:navPoint>
+            <ncx:navPoint id="id1562528" playOrder="178">
+              <ncx:navLabel>
+                <ncx:text>10.1.5. Resource Deadlocks</ncx:text>
+              </ncx:navLabel>
+              <ncx:content src="ch10.html#ch10lev2sec5"/>
+            </ncx:navPoint>
+          </ncx:navPoint>
+          <ncx:navPoint id="id1560505" playOrder="179">
+            <ncx:navLabel>
+              <ncx:text>10.2. Avoiding and Diagnosing Deadlocks</ncx:text>
+            </ncx:navLabel>
+            <ncx:content src="ch10s02.html"/>
+            <ncx:navPoint id="id1563046" playOrder="180">
+              <ncx:navLabel>
+                <ncx:text>10.2.1. Timed Lock Attempts</ncx:text>
+              </ncx:navLabel>
+              <ncx:content src="ch10s02.html#ch10lev2sec6"/>
+            </ncx:navPoint>
+            <ncx:navPoint id="id1563338" playOrder="181">
+              <ncx:navLabel>
+                <ncx:text>10.2.2. Deadlock Analysis with Thread Dumps</ncx:text>
+              </ncx:navLabel>
+              <ncx:content src="ch10s02.html#ch10lev2sec7"/>
+            </ncx:navPoint>
+          </ncx:navPoint>
+          <ncx:navPoint id="id1563533" playOrder="182">
+            <ncx:navLabel>
+              <ncx:text>10.3. Other Liveness Hazards</ncx:text>
+            </ncx:navLabel>
+            <ncx:content src="ch10s03.html"/>
+            <ncx:navPoint id="id1563956" playOrder="183">
+              <ncx:navLabel>
+                <ncx:text>10.3.1. Starvation</ncx:text>
+              </ncx:navLabel>
+              <ncx:content src="ch10s03.html#ch10lev2sec8"/>
+            </ncx:navPoint>
+            <ncx:navPoint id="id1564061" playOrder="184">
+              <ncx:navLabel>
+                <ncx:text>10.3.2. Poor Responsiveness</ncx:text>
+              </ncx:navLabel>
+              <ncx:content src="ch10s03.html#ch10lev2sec9"/>
+            </ncx:navPoint>
+            <ncx:navPoint id="id1564451" playOrder="185">
+              <ncx:navLabel>
+                <ncx:text>10.3.3. Livelock</ncx:text>
+              </ncx:navLabel>
+              <ncx:content src="ch10s03.html#ch10lev2sec10"/>
+            </ncx:navPoint>
+          </ncx:navPoint>
+          <ncx:navPoint id="id1564506" playOrder="186">
+            <ncx:navLabel>
+              <ncx:text>Summary</ncx:text>
+            </ncx:navLabel>
+            <ncx:content src="ch10s04.html"/>
+          </ncx:navPoint>
+        </ncx:navPoint>
+        <ncx:navPoint id="id1559332" playOrder="187">
+          <ncx:navLabel>
+            <ncx:text>11. Performance and Scalability</ncx:text>
+          </ncx:navLabel>
+          <ncx:content src="ch11.html"/>
+          <ncx:navPoint id="id1564879" playOrder="188">
+            <ncx:navLabel>
+              <ncx:text>11.1. Thinking about Performance</ncx:text>
+            </ncx:navLabel>
+            <ncx:content src="ch11.html#ch11lev1sec1"/>
+            <ncx:navPoint id="id1565623" playOrder="189">
+              <ncx:navLabel>
+                <ncx:text>11.1.1. Performance Versus Scalability</ncx:text>
+              </ncx:navLabel>
+              <ncx:content src="ch11.html#ch11lev2sec1"/>
+            </ncx:navPoint>
+            <ncx:navPoint id="id1566185" playOrder="190">
+              <ncx:navLabel>
+                <ncx:text>11.1.2. Evaluating Performance Tradeoffs</ncx:text>
+              </ncx:navLabel>
+              <ncx:content src="ch11.html#ch11lev2sec2"/>
+            </ncx:navPoint>
+          </ncx:navPoint>
+          <ncx:navPoint id="id1566192" playOrder="191">
+            <ncx:navLabel>
+              <ncx:text>11.2. Amdahl’s Law</ncx:text>
+            </ncx:navLabel>
+            <ncx:content src="ch11s02.html"/>
+            <ncx:navPoint id="id1571211" playOrder="192">
+              <ncx:navLabel>
+                <ncx:text>11.2.1. Example: Serialization Hidden in Frameworks</ncx:text>
+              </ncx:navLabel>
+              <ncx:content src="ch11s02.html#ch11lev2sec3"/>
+            </ncx:navPoint>
+            <ncx:navPoint id="id1571526" playOrder="193">
+              <ncx:navLabel>
+                <ncx:text>11.2.2. Applying Amdahl’s Law Qualitatively</ncx:text>
+              </ncx:navLabel>
+              <ncx:content src="ch11s02.html#ch11lev2sec4"/>
+            </ncx:navPoint>
+          </ncx:navPoint>
+          <ncx:navPoint id="id1571943" playOrder="194">
+            <ncx:navLabel>
+              <ncx:text>11.3. Costs Introduced by Threads</ncx:text>
+            </ncx:navLabel>
+            <ncx:content src="ch11s03.html"/>
+            <ncx:navPoint id="id1571969" playOrder="195">
+              <ncx:navLabel>
+                <ncx:text>11.3.1. Context Switching</ncx:text>
+              </ncx:navLabel>
+              <ncx:content src="ch11s03.html#ch11lev2sec5"/>
+            </ncx:navPoint>
+            <ncx:navPoint id="id1572594" playOrder="196">
+              <ncx:navLabel>
+                <ncx:text>11.3.2. Memory Synchronization</ncx:text>
+              </ncx:navLabel>
+              <ncx:content src="ch11s03.html#ch11lev2sec6"/>
+            </ncx:navPoint>
+            <ncx:navPoint id="id1573107" playOrder="197">
+              <ncx:navLabel>
+                <ncx:text>11.3.3. Blocking</ncx:text>
+              </ncx:navLabel>
+              <ncx:content src="ch11s03.html#ch11lev2sec7"/>
+            </ncx:navPoint>
+          </ncx:navPoint>
+          <ncx:navPoint id="id1573559" playOrder="198">
+            <ncx:navLabel>
+              <ncx:text>11.4. Reducing Lock Contention</ncx:text>
+            </ncx:navLabel>
+            <ncx:content src="ch11s04.html"/>
+            <ncx:navPoint id="id1573934" playOrder="199">
+              <ncx:navLabel>
+                <ncx:text>11.4.1. Narrowing Lock Scope (“Get in, Get Out”)</ncx:text>
+              </ncx:navLabel>
+              <ncx:content src="ch11s04.html#ch11lev2sec8"/>
+            </ncx:navPoint>
+            <ncx:navPoint id="id1573941" playOrder="200">
+              <ncx:navLabel>
+                <ncx:text>11.4.2. Reducing Lock Granularity</ncx:text>
+              </ncx:navLabel>
+              <ncx:content src="ch11s04.html#ch11lev2sec9"/>
+            </ncx:navPoint>
+            <ncx:navPoint id="id1575323" playOrder="201">
+              <ncx:navLabel>
+                <ncx:text>11.4.3. Lock Striping</ncx:text>
+              </ncx:navLabel>
+              <ncx:content src="ch11s04.html#ch11lev2sec10"/>
+            </ncx:navPoint>
+            <ncx:navPoint id="id1575388" playOrder="202">
+              <ncx:navLabel>
+                <ncx:text>11.4.4. Avoiding Hot Fields</ncx:text>
+              </ncx:navLabel>
+              <ncx:content src="ch11s04.html#ch11lev2sec11"/>
+            </ncx:navPoint>
+            <ncx:navPoint id="id1575912" playOrder="203">
+              <ncx:navLabel>
+                <ncx:text>11.4.5. Alternatives to Exclusive Locks</ncx:text>
+              </ncx:navLabel>
+              <ncx:content src="ch11s04.html#ch11lev2sec12"/>
+            </ncx:navPoint>
+            <ncx:navPoint id="id1576511" playOrder="204">
+              <ncx:navLabel>
+                <ncx:text>11.4.6. Monitoring CPU Utilization</ncx:text>
+              </ncx:navLabel>
+              <ncx:content src="ch11s04.html#ch11lev2sec13"/>
+            </ncx:navPoint>
+            <ncx:navPoint id="id1576888" playOrder="205">
+              <ncx:navLabel>
+                <ncx:text>11.4.7. Just Say No to Object Pooling</ncx:text>
+              </ncx:navLabel>
+              <ncx:content src="ch11s04.html#ch11lev2sec14"/>
+            </ncx:navPoint>
+          </ncx:navPoint>
+          <ncx:navPoint id="id1577144" playOrder="206">
+            <ncx:navLabel>
+              <ncx:text>11.5. Example: Comparing Map Performance</ncx:text>
+            </ncx:navLabel>
+            <ncx:content src="ch11s05.html"/>
+          </ncx:navPoint>
+          <ncx:navPoint id="id1577359" playOrder="207">
+            <ncx:navLabel>
+              <ncx:text>11.6. Reducing Context Switch Overhead</ncx:text>
+            </ncx:navLabel>
+            <ncx:content src="ch11s06.html"/>
+          </ncx:navPoint>
+          <ncx:navPoint id="id1577738" playOrder="208">
+            <ncx:navLabel>
+              <ncx:text>Summary</ncx:text>
+            </ncx:navLabel>
+            <ncx:content src="ch11s07.html"/>
+          </ncx:navPoint>
+        </ncx:navPoint>
+        <ncx:navPoint id="id1564546" playOrder="209">
+          <ncx:navLabel>
+            <ncx:text>12. Testing Concurrent Programs</ncx:text>
+          </ncx:navLabel>
+          <ncx:content src="ch12.html"/>
+          <ncx:navPoint id="id1578636" playOrder="210">
+            <ncx:navLabel>
+              <ncx:text>12.1. Testing for Correctness</ncx:text>
+            </ncx:navLabel>
+            <ncx:content src="ch12.html#ch12lev1sec1"/>
+            <ncx:navPoint id="id1578833" playOrder="211">
+              <ncx:navLabel>
+                <ncx:text>12.1.1. Basic Unit Tests</ncx:text>
+              </ncx:navLabel>
+              <ncx:content src="ch12.html#ch12lev2sec1"/>
+            </ncx:navPoint>
+            <ncx:navPoint id="id1579168" playOrder="212">
+              <ncx:navLabel>
+                <ncx:text>12.1.2. Testing Blocking Operations</ncx:text>
+              </ncx:navLabel>
+              <ncx:content src="ch12.html#ch12lev2sec2"/>
+            </ncx:navPoint>
+            <ncx:navPoint id="id1579481" playOrder="213">
+              <ncx:navLabel>
+                <ncx:text>12.1.3. Testing Safety</ncx:text>
+              </ncx:navLabel>
+              <ncx:content src="ch12.html#ch12lev2sec3"/>
+            </ncx:navPoint>
+            <ncx:navPoint id="id1580260" playOrder="214">
+              <ncx:navLabel>
+                <ncx:text>12.1.4. Testing Resource Management</ncx:text>
+              </ncx:navLabel>
+              <ncx:content src="ch12.html#ch12lev2sec4"/>
+            </ncx:navPoint>
+            <ncx:navPoint id="id1580729" playOrder="215">
+              <ncx:navLabel>
+                <ncx:text>12.1.5. Using Callbacks</ncx:text>
+              </ncx:navLabel>
+              <ncx:content src="ch12.html#ch12lev2sec5"/>
+            </ncx:navPoint>
+            <ncx:navPoint id="id1581053" playOrder="216">
+              <ncx:navLabel>
+                <ncx:text>12.1.6. Generating More Interleavings</ncx:text>
+              </ncx:navLabel>
+              <ncx:content src="ch12.html#ch12lev2sec6"/>
+            </ncx:navPoint>
+          </ncx:navPoint>
+          <ncx:navPoint id="id1578647" playOrder="217">
+            <ncx:navLabel>
+              <ncx:text>12.2. Testing for Performance</ncx:text>
+            </ncx:navLabel>
+            <ncx:content src="ch12s02.html"/>
+            <ncx:navPoint id="id1581560" playOrder="218">
+              <ncx:navLabel>
+                <ncx:text>12.2.1. Extending PutTakeTest to Add Timing</ncx:text>
+              </ncx:navLabel>
+              <ncx:content src="ch12s02.html#ch12lev2sec7"/>
+            </ncx:navPoint>
+            <ncx:navPoint id="id1581569" playOrder="219">
+              <ncx:navLabel>
+                <ncx:text>12.2.2. Comparing Multiple Algorithms</ncx:text>
+              </ncx:navLabel>
+              <ncx:content src="ch12s02.html#ch12lev2sec8"/>
+            </ncx:navPoint>
+            <ncx:navPoint id="id1582789" playOrder="220">
+              <ncx:navLabel>
+                <ncx:text>12.2.3. Measuring Responsiveness</ncx:text>
+              </ncx:navLabel>
+              <ncx:content src="ch12s02.html#ch12lev2sec9"/>
+            </ncx:navPoint>
+          </ncx:navPoint>
+          <ncx:navPoint id="id1583144" playOrder="221">
+            <ncx:navLabel>
+              <ncx:text>12.3. Avoiding Performance Testing Pitfalls</ncx:text>
+            </ncx:navLabel>
+            <ncx:content src="ch12s03.html"/>
+            <ncx:navPoint id="id1583286" playOrder="222">
+              <ncx:navLabel>
+                <ncx:text>12.3.1. Garbage Collection</ncx:text>
+              </ncx:navLabel>
+              <ncx:content src="ch12s03.html#ch12lev2sec10"/>
+            </ncx:navPoint>
+            <ncx:navPoint id="id1583334" playOrder="223">
+              <ncx:navLabel>
+                <ncx:text>12.3.2. Dynamic Compilation</ncx:text>
+              </ncx:navLabel>
+              <ncx:content src="ch12s03.html#ch12lev2sec11"/>
+            </ncx:navPoint>
+            <ncx:navPoint id="id1583956" playOrder="224">
+              <ncx:navLabel>
+                <ncx:text>12.3.3. Unrealistic Sampling of Code Paths</ncx:text>
+              </ncx:navLabel>
+              <ncx:content src="ch12s03.html#ch12lev2sec12"/>
+            </ncx:navPoint>
+            <ncx:navPoint id="id1584014" playOrder="225">
+              <ncx:navLabel>
+                <ncx:text>12.3.4. Unrealistic Degrees of Contention</ncx:text>
+              </ncx:navLabel>
+              <ncx:content src="ch12s03.html#ch12lev2sec13"/>
+            </ncx:navPoint>
+            <ncx:navPoint id="id1584147" playOrder="226">
+              <ncx:navLabel>
+                <ncx:text>12.3.5. Dead Code Elimination</ncx:text>
+              </ncx:navLabel>
+              <ncx:content src="ch12s03.html#ch12lev2sec14"/>
+            </ncx:navPoint>
+          </ncx:navPoint>
+          <ncx:navPoint id="id1584156" playOrder="227">
+            <ncx:navLabel>
+              <ncx:text>12.4. Complementary Testing Approaches</ncx:text>
+            </ncx:navLabel>
+            <ncx:content src="ch12s04.html"/>
+            <ncx:navPoint id="id1584691" playOrder="228">
+              <ncx:navLabel>
+                <ncx:text>12.4.1. Code Review</ncx:text>
+              </ncx:navLabel>
+              <ncx:content src="ch12s04.html#ch12lev2sec15"/>
+            </ncx:navPoint>
+            <ncx:navPoint id="id1584718" playOrder="229">
+              <ncx:navLabel>
+                <ncx:text>12.4.2. Static Analysis Tools</ncx:text>
+              </ncx:navLabel>
+              <ncx:content src="ch12s04.html#ch12lev2sec16"/>
+            </ncx:navPoint>
+            <ncx:navPoint id="id1584728" playOrder="230">
+              <ncx:navLabel>
+                <ncx:text>12.4.3. Aspect-oriented Testing Techniques</ncx:text>
+              </ncx:navLabel>
+              <ncx:content src="ch12s04.html#ch12lev2sec17"/>
+            </ncx:navPoint>
+            <ncx:navPoint id="id1585536" playOrder="231">
+              <ncx:navLabel>
+                <ncx:text>12.4.4. Profilers and Monitoring Tools</ncx:text>
+              </ncx:navLabel>
+              <ncx:content src="ch12s04.html#ch12lev2sec18"/>
+            </ncx:navPoint>
+          </ncx:navPoint>
+          <ncx:navPoint id="id1585579" playOrder="232">
+            <ncx:navLabel>
+              <ncx:text>Summary</ncx:text>
+            </ncx:navLabel>
+            <ncx:content src="ch12s05.html"/>
+          </ncx:navPoint>
+        </ncx:navPoint>
+      </ncx:navPoint>
+      <ncx:navPoint id="id1577779" playOrder="233">
+        <ncx:navLabel>
+          <ncx:text>IV. Advanced Topics</ncx:text>
+        </ncx:navLabel>
+        <ncx:content src="pt04.html"/>
+        <ncx:navPoint id="id1585633" playOrder="234">
+          <ncx:navLabel>
+            <ncx:text>13. Explicit Locks</ncx:text>
+          </ncx:navLabel>
+          <ncx:content src="ch13.html"/>
+          <ncx:navPoint id="id1585657" playOrder="235">
+            <ncx:navLabel>
+              <ncx:text>13.1. Lock and ReentrantLock</ncx:text>
+            </ncx:navLabel>
+            <ncx:content src="ch13.html#ch13lev1sec1"/>
+            <ncx:navPoint id="id1586498" playOrder="236">
+              <ncx:navLabel>
+                <ncx:text>13.1.1. Polled and Timed Lock Acquisition</ncx:text>
+              </ncx:navLabel>
+              <ncx:content src="ch13.html#ch13lev2sec1"/>
+            </ncx:navPoint>
+            <ncx:navPoint id="id1586960" playOrder="237">
+              <ncx:navLabel>
+                <ncx:text>13.1.2. Interruptible Lock Acquisition</ncx:text>
+              </ncx:navLabel>
+              <ncx:content src="ch13.html#ch13lev2sec2"/>
+            </ncx:navPoint>
+            <ncx:navPoint id="id1587225" playOrder="238">
+              <ncx:navLabel>
+                <ncx:text>13.1.3. Non-block-structured Locking</ncx:text>
+              </ncx:navLabel>
+              <ncx:content src="ch13.html#ch13lev2sec3"/>
+            </ncx:navPoint>
+          </ncx:navPoint>
+          <ncx:navPoint id="id1586046" playOrder="239">
+            <ncx:navLabel>
+              <ncx:text>13.2. Performance Considerations</ncx:text>
+            </ncx:navLabel>
+            <ncx:content src="ch13s02.html"/>
+          </ncx:navPoint>
+          <ncx:navPoint id="id1588018" playOrder="240">
+            <ncx:navLabel>
+              <ncx:text>13.3. Fairness</ncx:text>
+            </ncx:navLabel>
+            <ncx:content src="ch13s03.html"/>
+          </ncx:navPoint>
+          <ncx:navPoint id="id1588412" playOrder="241">
+            <ncx:navLabel>
+              <ncx:text>13.4. Choosing Between Synchronized and ReentrantLock</ncx:text>
+            </ncx:navLabel>
+            <ncx:content src="ch13s04.html"/>
+          </ncx:navPoint>
+          <ncx:navPoint id="id1588548" playOrder="242">
+            <ncx:navLabel>
+              <ncx:text>13.5. Read-write Locks</ncx:text>
+            </ncx:navLabel>
+            <ncx:content src="ch13s05.html"/>
+          </ncx:navPoint>
+          <ncx:navPoint id="id1588819" playOrder="243">
+            <ncx:navLabel>
+              <ncx:text>Summary</ncx:text>
+            </ncx:navLabel>
+            <ncx:content src="ch13s06.html"/>
+          </ncx:navPoint>
+        </ncx:navPoint>
+        <ncx:navPoint id="id1589570" playOrder="244">
+          <ncx:navLabel>
+            <ncx:text>14. Building Custom Synchronizers</ncx:text>
+          </ncx:navLabel>
+          <ncx:content src="ch14.html"/>
+          <ncx:navPoint id="id1589957" playOrder="245">
+            <ncx:navLabel>
+              <ncx:text>14.1. Managing State Dependence</ncx:text>
+            </ncx:navLabel>
+            <ncx:content src="ch14.html#ch14lev1sec1"/>
+            <ncx:navPoint id="id1590409" playOrder="246">
+              <ncx:navLabel>
+                <ncx:text>14.1.1. Example: Propagating Precondition Failure to Callers</ncx:text>
+              </ncx:navLabel>
+              <ncx:content src="ch14.html#ch14lev2sec1"/>
+            </ncx:navPoint>
+            <ncx:navPoint id="id1591104" playOrder="247">
+              <ncx:navLabel>
+                <ncx:text>14.1.2. Example: Crude Blocking by Polling and Sleeping</ncx:text>
+              </ncx:navLabel>
+              <ncx:content src="ch14.html#ch14lev2sec2"/>
+            </ncx:navPoint>
+            <ncx:navPoint id="id1591509" playOrder="248">
+              <ncx:navLabel>
+                <ncx:text>14.1.3. Condition Queues to the Rescue</ncx:text>
+              </ncx:navLabel>
+              <ncx:content src="ch14.html#ch14lev2sec3"/>
+            </ncx:navPoint>
+          </ncx:navPoint>
+          <ncx:navPoint id="id1589966" playOrder="249">
+            <ncx:navLabel>
+              <ncx:text>14.2. Using Condition Queues</ncx:text>
+            </ncx:navLabel>
+            <ncx:content src="ch14s02.html"/>
+            <ncx:navPoint id="id1592518" playOrder="250">
+              <ncx:navLabel>
+                <ncx:text>14.2.1. The Condition Predicate</ncx:text>
+              </ncx:navLabel>
+              <ncx:content src="ch14s02.html#ch14lev2sec4"/>
+            </ncx:navPoint>
+            <ncx:navPoint id="id1593184" playOrder="251">
+              <ncx:navLabel>
+                <ncx:text>14.2.2. Waking Up Too Soon</ncx:text>
+              </ncx:navLabel>
+              <ncx:content src="ch14s02.html#ch14lev2sec5"/>
+            </ncx:navPoint>
+            <ncx:navPoint id="id1593605" playOrder="252">
+              <ncx:navLabel>
+                <ncx:text>14.2.3. Missed Signals</ncx:text>
+              </ncx:navLabel>
+              <ncx:content src="ch14s02.html#ch14lev2sec6"/>
+            </ncx:navPoint>
+            <ncx:navPoint id="id1593684" playOrder="253">
+              <ncx:navLabel>
+                <ncx:text>14.2.4. Notification</ncx:text>
+              </ncx:navLabel>
+              <ncx:content src="ch14s02.html#ch14lev2sec7"/>
+            </ncx:navPoint>
+            <ncx:navPoint id="id1593697" playOrder="254">
+              <ncx:navLabel>
+                <ncx:text>14.2.5. Example: A Gate Class</ncx:text>
+              </ncx:navLabel>
+              <ncx:content src="ch14s02.html#ch14lev2sec8"/>
+            </ncx:navPoint>
+            <ncx:navPoint id="id1595163" playOrder="255">
+              <ncx:navLabel>
+                <ncx:text>14.2.6. Subclass Safety Issues</ncx:text>
+              </ncx:navLabel>
+              <ncx:content src="ch14s02.html#ch14lev2sec9"/>
+            </ncx:navPoint>
+            <ncx:navPoint id="id1595294" playOrder="256">
+              <ncx:navLabel>
+                <ncx:text>14.2.7. Encapsulating Condition Queues</ncx:text>
+              </ncx:navLabel>
+              <ncx:content src="ch14s02.html#ch14lev2sec10"/>
+            </ncx:navPoint>
+            <ncx:navPoint id="id1595805" playOrder="257">
+              <ncx:navLabel>
+                <ncx:text>14.2.8. Entry and Exit Protocols</ncx:text>
+              </ncx:navLabel>
+              <ncx:content src="ch14s02.html#ch14lev2sec11"/>
+            </ncx:navPoint>
+          </ncx:navPoint>
+          <ncx:navPoint id="id1592498" playOrder="258">
+            <ncx:navLabel>
+              <ncx:text>14.3. Explicit Condition Objects</ncx:text>
+            </ncx:navLabel>
+            <ncx:content src="ch14s03.html"/>
+          </ncx:navPoint>
+          <ncx:navPoint id="id1595885" playOrder="259">
+            <ncx:navLabel>
+              <ncx:text>14.4. Anatomy of a Synchronizer</ncx:text>
+            </ncx:navLabel>
+            <ncx:content src="ch14s04.html"/>
+          </ncx:navPoint>
+          <ncx:navPoint id="id1597734" playOrder="260">
+            <ncx:navLabel>
+              <ncx:text>14.5. AbstractQueuedSynchronizer</ncx:text>
+            </ncx:navLabel>
+            <ncx:content src="ch14s05.html"/>
+            <ncx:navPoint id="id1598065" playOrder="261">
+              <ncx:navLabel>
+                <ncx:text>14.5.1. A Simple Latch</ncx:text>
+              </ncx:navLabel>
+              <ncx:content src="ch14s05.html#ch14lev2sec12"/>
+            </ncx:navPoint>
+          </ncx:navPoint>
+          <ncx:navPoint id="id1597744" playOrder="262">
+            <ncx:navLabel>
+              <ncx:text>14.6. AQS in Java.util.concurrent Synchronizer Classes</ncx:text>
+            </ncx:navLabel>
+            <ncx:content src="ch14s06.html"/>
+            <ncx:navPoint id="id1598394" playOrder="263">
+              <ncx:navLabel>
+                <ncx:text>14.6.1. ReentrantLock</ncx:text>
+              </ncx:navLabel>
+              <ncx:content src="ch14s06.html#ch14lev2sec13"/>
+            </ncx:navPoint>
+            <ncx:navPoint id="id1598639" playOrder="264">
+              <ncx:navLabel>
+                <ncx:text>14.6.2. Semaphore and CountDownLatch</ncx:text>
+              </ncx:navLabel>
+              <ncx:content src="ch14s06.html#ch14lev2sec14"/>
+            </ncx:navPoint>
+            <ncx:navPoint id="id1598842" playOrder="265">
+              <ncx:navLabel>
+                <ncx:text>14.6.3. FutureTask</ncx:text>
+              </ncx:navLabel>
+              <ncx:content src="ch14s06.html#ch14lev2sec15"/>
+            </ncx:navPoint>
+            <ncx:navPoint id="id1598886" playOrder="266">
+              <ncx:navLabel>
+                <ncx:text>14.6.4. ReentrantReadWriteLock</ncx:text>
+              </ncx:navLabel>
+              <ncx:content src="ch14s06.html#ch14lev2sec16"/>
+            </ncx:navPoint>
+          </ncx:navPoint>
+          <ncx:navPoint id="id1598972" playOrder="267">
+            <ncx:navLabel>
+              <ncx:text>Summary</ncx:text>
+            </ncx:navLabel>
+            <ncx:content src="ch14s07.html"/>
+          </ncx:navPoint>
+        </ncx:navPoint>
+        <ncx:navPoint id="id1589580" playOrder="268">
+          <ncx:navLabel>
+            <ncx:text>15. Atomic Variables and Nonblocking Synchronization</ncx:text>
+          </ncx:navLabel>
+          <ncx:content src="ch15.html"/>
+          <ncx:navPoint id="id1599870" playOrder="269">
+            <ncx:navLabel>
+              <ncx:text>15.1. Disadvantages of Locking</ncx:text>
+            </ncx:navLabel>
+            <ncx:content src="ch15.html#ch15lev1sec1"/>
+          </ncx:navPoint>
+          <ncx:navPoint id="id1600347" playOrder="270">
+            <ncx:navLabel>
+              <ncx:text>15.2. Hardware Support for Concurrency</ncx:text>
+            </ncx:navLabel>
+            <ncx:content src="ch15s02.html"/>
+            <ncx:navPoint id="id1600418" playOrder="271">
+              <ncx:navLabel>
+                <ncx:text>15.2.1. Compare and Swap</ncx:text>
+              </ncx:navLabel>
+              <ncx:content src="ch15s02.html#ch15lev2sec1"/>
+            </ncx:navPoint>
+            <ncx:navPoint id="id1600677" playOrder="272">
+              <ncx:navLabel>
+                <ncx:text>15.2.2. A Nonblocking Counter</ncx:text>
+              </ncx:navLabel>
+              <ncx:content src="ch15s02.html#ch15lev2sec2"/>
+            </ncx:navPoint>
+            <ncx:navPoint id="id1601130" playOrder="273">
+              <ncx:navLabel>
+                <ncx:text>15.2.3. CAS Support in the JVM</ncx:text>
+              </ncx:navLabel>
+              <ncx:content src="ch15s02.html#ch15lev2sec3"/>
+            </ncx:navPoint>
+          </ncx:navPoint>
+          <ncx:navPoint id="id1601175" playOrder="274">
+            <ncx:navLabel>
+              <ncx:text>15.3. Atomic Variable Classes</ncx:text>
+            </ncx:navLabel>
+            <ncx:content src="ch15s03.html"/>
+            <ncx:navPoint id="id1601671" playOrder="275">
+              <ncx:navLabel>
+                <ncx:text>15.3.1. Atomics as “Better Volatiles”</ncx:text>
+              </ncx:navLabel>
+              <ncx:content src="ch15s03.html#ch15lev2sec4"/>
+            </ncx:navPoint>
+            <ncx:navPoint id="id1601816" playOrder="276">
+              <ncx:navLabel>
+                <ncx:text>15.3.2. Performance Comparison: Locks Versus Atomic Variables</ncx:text>
+              </ncx:navLabel>
+              <ncx:content src="ch15s03.html#ch15lev2sec5"/>
+            </ncx:navPoint>
+          </ncx:navPoint>
+          <ncx:navPoint id="id1601825" playOrder="277">
+            <ncx:navLabel>
+              <ncx:text>15.4. Nonblocking Algorithms</ncx:text>
+            </ncx:navLabel>
+            <ncx:content src="ch15s04.html"/>
+            <ncx:navPoint id="id1602742" playOrder="278">
+              <ncx:navLabel>
+                <ncx:text>15.4.1. A Nonblocking Stack</ncx:text>
+              </ncx:navLabel>
+              <ncx:content src="ch15s04.html#ch15lev2sec6"/>
+            </ncx:navPoint>
+            <ncx:navPoint id="id1602869" playOrder="279">
+              <ncx:navLabel>
+                <ncx:text>15.4.2. A Nonblocking Linked List</ncx:text>
+              </ncx:navLabel>
+              <ncx:content src="ch15s04.html#ch15lev2sec7"/>
+            </ncx:navPoint>
+            <ncx:navPoint id="id1603766" playOrder="280">
+              <ncx:navLabel>
+                <ncx:text>15.4.3. Atomic Field Updaters</ncx:text>
+              </ncx:navLabel>
+              <ncx:content src="ch15s04.html#ch15lev2sec8"/>
+            </ncx:navPoint>
+            <ncx:navPoint id="id1603940" playOrder="281">
+              <ncx:navLabel>
+                <ncx:text>15.4.4. The ABA Problem</ncx:text>
+              </ncx:navLabel>
+              <ncx:content src="ch15s04.html#ch15lev2sec9"/>
+            </ncx:navPoint>
+          </ncx:navPoint>
+          <ncx:navPoint id="id1604067" playOrder="282">
+            <ncx:navLabel>
+              <ncx:text>Summary</ncx:text>
+            </ncx:navLabel>
+            <ncx:content src="ch15s05.html"/>
+          </ncx:navPoint>
+        </ncx:navPoint>
+        <ncx:navPoint id="id1599053" playOrder="283">
+          <ncx:navLabel>
+            <ncx:text>16. The Java Memory Model</ncx:text>
+          </ncx:navLabel>
+          <ncx:content src="ch16.html"/>
+          <ncx:navPoint id="id1604124" playOrder="284">
+            <ncx:navLabel>
+              <ncx:text>16.1. What is a Memory Model, and Why would I Want One?</ncx:text>
+            </ncx:navLabel>
+            <ncx:content src="ch16.html#ch16lev1sec1"/>
+            <ncx:navPoint id="id1604999" playOrder="285">
+              <ncx:navLabel>
+                <ncx:text>16.1.1. Platform Memory Models</ncx:text>
+              </ncx:navLabel>
+              <ncx:content src="ch16.html#ch16lev2sec1"/>
+            </ncx:navPoint>
+            <ncx:navPoint id="id1605167" playOrder="286">
+              <ncx:navLabel>
+                <ncx:text>16.1.2. Reordering</ncx:text>
+              </ncx:navLabel>
+              <ncx:content src="ch16.html#ch16lev2sec2"/>
+            </ncx:navPoint>
+            <ncx:navPoint id="id1605456" playOrder="287">
+              <ncx:navLabel>
+                <ncx:text>16.1.3. The Java Memory Model in 500 Words or Less</ncx:text>
+              </ncx:navLabel>
+              <ncx:content src="ch16.html#ch16lev2sec3"/>
+            </ncx:navPoint>
+            <ncx:navPoint id="id1606281" playOrder="288">
+              <ncx:navLabel>
+                <ncx:text>16.1.4. Piggybacking on Synchronization</ncx:text>
+              </ncx:navLabel>
+              <ncx:content src="ch16.html#ch16lev2sec4"/>
+            </ncx:navPoint>
+          </ncx:navPoint>
+          <ncx:navPoint id="id1606734" playOrder="289">
+            <ncx:navLabel>
+              <ncx:text>16.2. Publication</ncx:text>
+            </ncx:navLabel>
+            <ncx:content src="ch16s02.html"/>
+            <ncx:navPoint id="id1606769" playOrder="290">
+              <ncx:navLabel>
+                <ncx:text>16.2.1. Unsafe Publication</ncx:text>
+              </ncx:navLabel>
+              <ncx:content src="ch16s02.html#ch16lev2sec5"/>
+            </ncx:navPoint>
+            <ncx:navPoint id="id1607212" playOrder="291">
+              <ncx:navLabel>
+                <ncx:text>16.2.2. Safe Publication</ncx:text>
+              </ncx:navLabel>
+              <ncx:content src="ch16s02.html#ch16lev2sec6"/>
+            </ncx:navPoint>
+            <ncx:navPoint id="id1607398" playOrder="292">
+              <ncx:navLabel>
+                <ncx:text>16.2.3. Safe Initialization Idioms</ncx:text>
+              </ncx:navLabel>
+              <ncx:content src="ch16s02.html#ch16lev2sec7"/>
+            </ncx:navPoint>
+            <ncx:navPoint id="id1607701" playOrder="293">
+              <ncx:navLabel>
+                <ncx:text>16.2.4. Double-checked Locking</ncx:text>
+              </ncx:navLabel>
+              <ncx:content src="ch16s02.html#ch16lev2sec8"/>
+            </ncx:navPoint>
+          </ncx:navPoint>
+          <ncx:navPoint id="id1608591" playOrder="294">
+            <ncx:navLabel>
+              <ncx:text>16.3. Initialization Safety</ncx:text>
+            </ncx:navLabel>
+            <ncx:content src="ch16s03.html"/>
+          </ncx:navPoint>
+          <ncx:navPoint id="id1608881" playOrder="295">
+            <ncx:navLabel>
+              <ncx:text>Summary</ncx:text>
+            </ncx:navLabel>
+            <ncx:content src="ch16s04.html"/>
+          </ncx:navPoint>
+        </ncx:navPoint>
+        <ncx:navPoint id="id1608941" playOrder="296">
+          <ncx:navLabel>
+            <ncx:text>A. Annotations for Concurrency</ncx:text>
+          </ncx:navLabel>
+          <ncx:content src="apa.html"/>
+          <ncx:navPoint id="id1609192" playOrder="297">
+            <ncx:navLabel>
+              <ncx:text>A.1. Class Annotations</ncx:text>
+            </ncx:navLabel>
+            <ncx:content src="apa.html#app01lev1sec1"/>
+          </ncx:navPoint>
+          <ncx:navPoint id="id1609262" playOrder="298">
+            <ncx:navLabel>
+              <ncx:text>A.2. Field and Method Annotations</ncx:text>
+            </ncx:navLabel>
+            <ncx:content src="apas02.html"/>
+          </ncx:navPoint>
+        </ncx:navPoint>
+        <ncx:navPoint id="id1609430" playOrder="299">
+          <ncx:navLabel>
+            <ncx:text>Bibliography</ncx:text>
+          </ncx:navLabel>
+          <ncx:content src="bi01.html"/>
+        </ncx:navPoint>
+      </ncx:navPoint>
+      <ncx:navPoint id="id1611072" playOrder="300">
+        <ncx:navLabel>
+          <ncx:text>Index</ncx:text>
+        </ncx:navLabel>
+        <ncx:content src="ix01.html"/>
+      </ncx:navPoint>
+    </ncx:navPoint>
+  </ncx:navMap>
+</ncx:ncx>

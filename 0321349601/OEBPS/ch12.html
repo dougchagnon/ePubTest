@@ -1,0 +1,356 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN" "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml"><head><title>Chapter 12. Testing Concurrent Programs</title><link rel="stylesheet" href="styles/convert.css" type="text/css"/></head><body><div class="chapter" title="Chapter 12. Testing Concurrent Programs"><div class="titlepage"><div><div><h1 class="title"><a id="ch12"/>Chapter 12. Testing Concurrent Programs</h1></div></div></div>
+
+
+
+
+<p><a id="iddle1479" class="indexterm"/><a id="iddle1678" class="indexterm"/><a id="iddle2310" class="indexterm"/><a id="iddle2311" class="indexterm"/><a id="iddle2632" class="indexterm"/><a id="iddle3536" class="indexterm"/><a id="iddle3672" class="indexterm"/><a id="iddle3673" class="indexterm"/><a id="iddle4047" class="indexterm"/><a id="iddle4693" class="indexterm"/><a id="iddle4709" class="indexterm"/><a id="iddle4714" class="indexterm"/>Concurrent programs employ similar design principles and patterns to sequential programs. The difference is that concurrent programs have a degree of nondeterminism that sequential programs do not, increasing the number of potential interactions and failure modes that must be planned for and analyzed.</p>
+<p>Similarly, testing concurrent programs uses and extends ideas from testing sequential ones. The same techniques for testing correctness and performance in sequential programs can be applied to concurrent programs, but with concurrent programs the space of things that can go wrong is much larger. The major challenge in constructing tests for concurrent programs is that potential failures may be rare probabalistic occurrences rather than deterministic ones; tests that disclose such failures must be more extensive and run for longer than typical sequential tests.</p>
+<p>Most tests of concurrent classes fall into one or both of the classic categories of <span class="emphasis"><em>safety</em></span> and <span class="emphasis"><em>liveness</em></span>. In <a class="link" href="ch01.html" title="Chapter 1. Introduction">Chapter 1</a>, we defined safety as “nothing bad ever happens” and liveness as “something good eventually happens”.</p>
+<p>Tests of safety, which verify that a class’s behavior conforms to its specification, usually take the form of testing invariants. For example, in a linked list implementation that caches the size of the list every time it is modified, one safety test would be to compare the cached count against the actual number of elements in the list. In a single-threaded program this is easy, since the list contents do not change while you are testing its properties. But in a concurrent program, such a test is likely to be fraught with races unless you can observe the count field and count the elements in a single atomic operation. This can be done by locking the list for exclusive access, employing some sort of “atomic snapshot” feature provided by the implementation, or by using “test points” provided by the implementation that let tests assert invariants or execute test code atomically.</p>
+<p>In this book, we’ve used timing diagrams to depict “unlucky” interactions that could cause failures in incorrectly constructed classes; test programs attempt to search enough of the state space that such bad luck eventually occurs. Unfortunately, test code can introduce timing or synchronization artifacts that can mask bugs that might otherwise manifest themselves.<sup>[<a id="ch12fn01" href="#ftn.ch12fn01" class="footnote">1</a>]</sup></p>
+<p><a id="iddle1266" class="indexterm"/><a id="iddle2086" class="indexterm"/><a id="iddle4140" class="indexterm"/><a id="iddle1211" class="indexterm"/><a id="iddle1268" class="indexterm"/><a id="iddle1272" class="indexterm"/><a id="iddle1677" class="indexterm"/><a id="iddle1702" class="indexterm"/><a id="iddle1779" class="indexterm"/><a id="iddle2085" class="indexterm"/><a id="iddle3029" class="indexterm"/><a id="iddle3030" class="indexterm"/><a id="iddle3537" class="indexterm"/><a id="iddle3949" class="indexterm"/><a id="iddle4059" class="indexterm"/><a id="iddle4141" class="indexterm"/><a id="iddle4151" class="indexterm"/><a id="iddle4697" class="indexterm"/><a id="iddle4698" class="indexterm"/><a id="iddle4700" class="indexterm"/><a id="iddle4707" class="indexterm"/><a id="iddle4708" class="indexterm"/><a id="iddle4712" class="indexterm"/><a id="iddle4868" class="indexterm"/><a id="iddle5010" class="indexterm"/>Liveness properties present their own testing challenges. Liveness tests include tests of progress and nonprogress, which are hard to quantify—how do you verify that a method is blocking and not merely running slowly? Similarly, how do you test that an algorithm does <span class="emphasis"><em>not</em></span> deadlock? How long should you wait before you declare it to have failed?</p>
+<p>Related to liveness tests are performance tests. Performance can be measured in a number of ways, including:</p>
+<p title="Throughput:"><b><span class="strong"><strong>Throughput:</strong></span> </b>the rate at which a set of concurrent tasks is completed;</p>
+<p title="Responsiveness:"><b><span class="strong"><strong>Responsiveness:</strong></span> </b>the delay between a request for and completion of some action (also called <span class="emphasis"><em>latency</em></span>); or</p>
+<p title="Scalability:"><b><span class="strong"><strong>Scalability:</strong></span> </b>the improvement in throughput (or lack thereof) as more resources (usually CPUs) are made available.</p>
+
+
+
+<div class="section" title="Testing for Correctness"><div class="titlepage"><div><div><h2 class="title"><a id="ch12lev1sec1"/>Testing for Correctness</h2></div></div></div>
+
+<p>Developing unit tests for a concurrent class starts with the same analysis as for a sequential class—identifying invariants and postconditions that are amenable to mechanical checking. If you are lucky, many of these are present in the specification; the rest of the time, writing tests is an adventure in iterative specification discovery.</p>
+<p>As a concrete illustration, we’re going to build a set of test cases for a bounded buffer. <a class="link" href="ch12.html#ch12list01" title="Example 12.1. Bounded Buffer Using Semaphore.">Listing 12.1</a> shows our <code class="literal">BoundedBuffer</code> implementation, using <code class="literal">Semaphore</code> to implement the required bounding and blocking.</p>
+<p><code class="literal">BoundedBuffer</code> implements a fixed-length array-based queue with blocking <code class="literal">put</code> and <code class="literal">take</code> methods controlled by a pair of counting semaphores. The <code class="literal">availableItems</code> semaphore represents the number of elements that can be <span class="emphasis"><em>removed</em></span> from the buffer, and is initially zero (since the buffer is initially empty). Similarly, <code class="literal">availableSpaces</code> represents how many items can be <span class="emphasis"><em>inserted</em></span> into the buffer, and is initialized to the size of the buffer.</p>
+<p>A <code class="literal">take</code> operation first requires that a permit be obtained from <code class="literal">availableItems</code>. This succeeds immediately if the buffer is nonempty, and otherwise blocks until the buffer becomes nonempty. Once a permit is obtained, the next element from the buffer is removed and a permit is released to the <code class="literal">availableSpaces</code> semaphore.<sup>[<a id="ch12fn02" href="#ftn.ch12fn02" class="footnote">2</a>]</sup> The <code class="literal">put</code> operation is defined conversely, so that on exit from either the <code class="literal">put</code> or <code class="literal">take</code> methods, the sum of the counts of both semaphores always equals the bound. (In practice, if you need a bounded buffer you should use <code class="literal">ArrayBlockingQueue</code> or <code class="literal">LinkedBlockingQueue</code> rather than rolling your own, but the technique used here illustrates how insertions and removals can be controlled in other data structures as well.)</p>
+<div class="example"><a id="ch12list01"/><p class="title"><b>Example 12.1. Bounded Buffer Using <code class="literal">Semaphore</code>.</b></p><div class="example-contents">
+
+
+<pre class="programlisting">@ThreadSafe
+public class BoundedBuffer&lt;E&gt; {
+    private final Semaphore availableItems, availableSpaces;
+    @GuardedBy("this") private final E[] items;
+    @GuardedBy("this") private int putPosition = 0, takePosition = 0;
+
+    public BoundedBuffer(int capacity) {
+        availableItems = new Semaphore(0);
+        availableSpaces = new Semaphore(capacity);
+        items = (E[]) new Object[capacity];
+    }
+    public boolean isEmpty() {
+        return availableItems.availablePermits() == 0;
+    }
+    public boolean isFull() {
+        return availableSpaces.availablePermits() == 0;
+    }
+
+    public void put(E x) throws InterruptedException {
+        availableSpaces.acquire();
+        doInsert(x);
+        availableItems.release();
+    }
+    public E take() throws InterruptedException {
+        availableItems.acquire();
+        E item = doExtract();
+        availableSpaces.release();
+        return item;
+    }
+
+    private <span class="strong"><strong>synchronized</strong></span> void doInsert(E x) {
+        int i = putPosition;
+        items[i] = x;
+        putPosition = (++i == items.length)? 0 : i;
+    }
+    private <span class="strong"><strong>synchronized</strong></span> E doExtract() {
+        int i = takePosition;
+        E x = items[i];
+        items[i] = null;
+        takePosition = (++i == items.length)? 0 : i;
+        return x;
+    }
+}
+</pre>
+</div></div><br class="example-break"/>
+<div class="section" title="Basic Unit Tests"><div class="titlepage"><div><div><h3 class="title"><a id="ch12lev2sec1"/>Basic Unit Tests</h3></div></div></div>
+
+
+<p><a id="iddle1218" class="indexterm"/><a id="iddle1219" class="indexterm"/><a id="iddle1269" class="indexterm"/><a id="iddle1899" class="indexterm"/><a id="iddle2089" class="indexterm"/><a id="iddle2845" class="indexterm"/><a id="iddle3882" class="indexterm"/><a id="iddle3883" class="indexterm"/><a id="iddle4170" class="indexterm"/><a id="iddle4663" class="indexterm"/><a id="iddle4664" class="indexterm"/><a id="iddle5008" class="indexterm"/><a id="iddle5009" class="indexterm"/>The most basic unit tests for <code class="literal">BoundedBuffer</code> are similar to what we’d use in a sequential context—create a bounded buffer, call its methods, and assert postconditions and invariants. Some invariants that quickly come to mind are that a freshly created buffer should identify itself as empty, and also as not full. A similar but slightly more complicated safety test is to insert <span class="emphasis"><em>N</em></span> elements into a buffer with capacity <span class="emphasis"><em>N</em></span> (which should succeed without blocking), and test that the buffer recognizes that it is full (and not empty). JUnit test methods for these properties are shown in <a class="link" href="ch12.html#ch12list02" title="Example 12.2. Basic Unit Tests for BoundedBuffer.">Listing 12.2</a>.</p>
+<div class="example"><a id="ch12list02"/><p class="title"><b>Example 12.2. Basic Unit Tests for <code class="literal">BoundedBuffer</code>.</b></p><div class="example-contents">
+
+<pre class="programlisting">class BoundedBufferTest extends TestCase {
+    void testIsEmptyWhenConstructed() {
+        BoundedBuffer&lt;Integer&gt; bb = new BoundedBuffer&lt;Integer&gt;(10);
+        assertTrue(bb.isEmpty());
+        assertFalse(bb.isFull());
+    }
+
+    void testIsFullAfterPuts() throws InterruptedException {
+        BoundedBuffer&lt;Integer&gt; bb = new BoundedBuffer&lt;Integer&gt;(10);
+        for (int i = 0; i &lt; 10; i++)
+            bb.put(i);
+        assertTrue(bb.isFull());
+        assertFalse(bb.isEmpty());
+    }
+}
+</pre>
+</div></div><br class="example-break"/>
+<p>These simple test methods are entirely sequential. Including a set of sequential tests in your test suite is often helpful, since they can disclose when a problem is <span class="emphasis"><em>not</em></span> related to concurrency issues before you start looking for data races.</p>
+</div>
+<div class="section" title="Testing Blocking Operations"><div class="titlepage"><div><div><h3 class="title"><a id="ch12lev2sec2"/>Testing Blocking Operations</h3></div></div></div>
+
+<p>Tests of essential concurrency properties require introducing more than one thread. Most testing frameworks are not very concurrency-friendly: they rarely include facilities to create threads or monitor them to ensure that they do not die unexpectedly. If a helper thread created by a test case discovers a failure, the framework usually does not know with which test the thread is associated, so some work may be required to relay success or failure information back to the main test runner thread so it can be reported.</p>
+<p>For the conformance tests for <code class="literal">java.util.concurrent</code>, it was important that failures be clearly associated with a specific test. Hence the JSR 166 Expert Group created a base class<sup>[<a id="ch12fn03" href="#ftn.ch12fn03" class="footnote">3</a>]</sup> that provided methods to relay and report failures during <a id="iddle2800" class="indexterm"/><a id="iddle4723" class="indexterm"/><a id="iddle4724" class="indexterm"/><code class="literal">tearDown</code>, following the convention that every test must wait until all the threads it created terminate. You may not need to go to such lengths; the key requirements are that it be clear whether the tests passed and that failure information is reported somewhere for use in diagnosing the problem.</p>
+<p>If a method is supposed to block under certain conditions, then a test for that behavior should succeed only if the thread does <span class="emphasis"><em>not</em></span> proceed. Testing that a method blocks is similar to testing that a method throws an exception; if the method returns normally, the test has failed.</p>
+<p>Testing that a method blocks introduces an additional complication: once the method successfully blocks, you have to convince it somehow to unblock. The obvious way to do this is via interruption—start a blocking activity in a separate thread, wait until the thread blocks, interrupt it, and then assert that the blocking operation completed. Of course, this requires your blocking methods to respond to interruption by returning early or throwing <code class="literal">InterruptedException</code>.</p>
+<p>The “wait until the thread blocks” part is easier said than done; in practice, you have to make an arbitrary decision about how long the few instructions being executed could possibly take, and wait longer than that. You should be prepared to increase this value if you are wrong (in which case you will see spurious test failures).</p>
+<p><a class="link" href="ch12.html#ch12list03" title="Example 12.3. Testing Blocking and Responsiveness to Interruption.">Listing 12.3</a> shows an approach to testing blocking operations. It creates a “taker” thread that attempts to <code class="literal">take</code> an element from an empty buffer. If <code class="literal">take</code> succeeds, it registers failure. The test runner thread starts the taker thread, waits a long time, and then interrupts it. If the taker thread has correctly blocked in the <code class="literal">take</code> operation, it will throw <code class="literal">InterruptedException</code>, and the <code class="literal">catch</code> block for this exception treats this as success and lets the thread exit. The main test runner thread then attempts to <code class="literal">join</code> with the taker thread and verifies that the join returned successfully by calling <code class="literal">Thread.isAlive</code>; if the taker thread responded to the interrupt, the <code class="literal">join</code> should complete quickly.</p>
+<p>The timed <code class="literal">join</code> ensures that the test completes even if <code class="literal">take</code> gets stuck in some unexpected way. This test method tests several properties of <code class="literal">take</code>—not only that it blocks but that, when interrupted, it throws <code class="literal">InterruptedException</code>. This is one of the few cases in which it is appropriate to subclass <code class="literal">Thread</code> explicitly instead of using a <code class="literal">Runnable</code> in a pool: in order to test proper termination with <code class="literal">join</code>. The same approach can be used to test that the taker thread unblocks after an element is placed in the queue by the main thread.</p>
+<p>It is tempting to use <code class="literal">Thread.getState</code> to verify that the thread is actually blocked on a condition wait, but this approach is not reliable. There is nothing that requires a blocked thread <span class="emphasis"><em>ever</em></span> to enter the <code class="literal">WAITING</code> or <code class="literal">TIMED_WAITING</code> states, since the JVM can choose to implement blocking by spin-waiting instead. Similarly, because spurious wakeups from <code class="literal">Object.wait</code> or <code class="literal">Condition.await</code> are permitted (see <a class="link" href="ch14.html" title="Chapter 14. Building Custom Synchronizers">Chapter 14</a>), a thread in the <code class="literal">WAITING</code> or <code class="literal">TIMED_WAITING</code> state may temporarily transition to <code class="literal">RUNNABLE</code> even if the condition for which it is waiting is not yet true. Even ignoring these implementation options, it may take some time for the target thread to settle into a blocking state. <span class="emphasis"><em>The result of Thread.getState should not be used for concurrency control, and is of limited usefulness for testing—its primary utility is as a source of debugging information.</em></span></p>
+
+<p/><div class="example"><a id="ch12list03"/><p class="title"><b>Example 12.3. Testing Blocking and Responsiveness to Interruption.</b></p><div class="example-contents">
+
+
+<pre class="programlisting">void testTakeBlocksWhenEmpty() {
+    final BoundedBuffer&lt;Integer&gt; bb = new BoundedBuffer&lt;Integer&gt;(10);
+    Thread taker = new Thread() {
+        public void run() {
+            try {
+                int unused = bb.take();
+                fail();  // if we get here, it's an error
+            } catch (InterruptedException success) { }
+        }};
+    try {
+        taker.start();
+        Thread.sleep(LOCKUP_DETECT_TIMEOUT);
+        taker.interrupt();
+        taker.join(LOCKUP_DETECT_TIMEOUT);
+        assertFalse(taker.isAlive());
+    } catch (Exception unexpected) {
+        fail();
+    }
+}
+</pre>
+</div></div><br class="example-break"/>
+</div>
+<div class="section" title="Testing Safety"><div class="titlepage"><div><div><h3 class="title"><a id="ch12lev2sec3"/>Testing Safety</h3></div></div></div>
+
+<p><a id="iddle2573" class="indexterm"/><a id="iddle3688" class="indexterm"/><a id="iddle4046" class="indexterm"/><a id="iddle4713" class="indexterm"/><a id="iddle4717" class="indexterm"/>The tests in <a class="link" href="ch12.html#ch12list02" title="Example 12.2. Basic Unit Tests for BoundedBuffer.">Listings 12.2</a> and <a class="link" href="ch12.html#ch12list03" title="Example 12.3. Testing Blocking and Responsiveness to Interruption.">12.3</a> test important properties of the bounded buffer, but are unlikely to disclose errors stemming from data races. To test that a concurrent class performs correctly under unpredictable concurrent access, we need to set up multiple threads performing <code class="literal">put</code> and <code class="literal">take</code> operations over some amount of time and then somehow test that nothing went wrong.</p>
+<p>Constructing tests to disclose safety errors in concurrent classes is a chicken-and-egg problem: the test programs themselves are concurrent programs. Developing good concurrent tests can be more difficult than developing the classes they test.</p>
+<div class="sidebar"><a id="ch12sb01"/><p class="title"><b/></p>
+<p>The challenge to constructing effective safety tests for concurrent classes is identifying easily checked properties that will, with high probability, fail if something goes wrong, while at the same time not letting the failureauditing code limit concurrency artificially. It is best if checking the test property does not require any synchronization.</p>
+</div>
+<p>One approach that works well with classes used in producer-consumer designs (like <code class="literal">BoundedBuffer</code>) is to check that everything put into a queue or buffer comes out of it, and that nothing else does. A naive implementation of this approach would insert the element into a “shadow” list when it is put on the queue, <a id="iddle1340" class="indexterm"/><a id="iddle1341" class="indexterm"/><a id="iddle3401" class="indexterm"/><a id="iddle3402" class="indexterm"/><a id="iddle3790" class="indexterm"/>remove it from the list when it is removed from the queue, and assert that the shadow list is empty when the test has finished. But this approach would distort the scheduling of the test threads because modifying the shadow list would require synchronization and possibly blocking.</p>
+<p>A better approach is to compute checksums of the elements that are enqueued and dequeued using an order-sensitive checksum function, and compare them. If they match, the test passes. This approach works best when there is a single producer putting elements into the buffer and a single consumer taking them out, because it can test not only that the right elements (probably) came out but that they came out in the right order.</p>
+<p>Extending this approach to a multiple-producer, multiple-consumer situation requires using a checksum function that is <span class="emphasis"><em>insensitive</em></span> to the order in which the elements are combined, so that multiple checksums can be combined after the test. Otherwise, synchronizing access to a shared checksum field could become a concurrency bottleneck or distort the timing of the test. (Any commutative operation, such as addition or XOR, meets these requirements.)</p>
+<p>To ensure that your test actually tests what you think it does, it is important that the checksums themselves not be guessable by the compiler. It would be a bad idea to use consecutive integers as your test data because then the result would always be the same, and a smart compiler could conceivably just precompute it.</p>
+<p>To avoid this problem, test data should be generated randomly, but many otherwise effective tests are compromised by a poor choice of random number generator (RNG). Random number generation can create couplings between classes and timing artifacts because most random number generator classes are threadsafe and therefore introduce additional synchronization.<sup>[<a id="ch12fn04" href="#ftn.ch12fn04" class="footnote">4</a>]</sup> Giving each thread its own RNG allows a non-thread-safe RNG to be used.</p>
+<p>Rather than using a general-purpose RNG, it is better to use simple pseudorandom functions. You don’t need high-quality randomness; all you need is enough randomness to ensure the numbers change from run to run. The <code class="literal">xor-Shift</code> function in <a class="link" href="ch12.html#ch12list04" title="Example 12.4. Medium-quality Random Number Generator Suitable for Testing.">Listing 12.4</a> (<a class="link" href="bi01.html#biblio01_025" title="XorShift RNGs">Marsaglia, 2003</a>) is among the cheapest mediumquality random number functions. Starting it off with values based on <code class="literal">hashCode</code> and <code class="literal">nanoTime</code> makes the sums both unguessable and almost always different for each run.</p>
+<div class="example"><a id="ch12list04"/><p class="title"><b>Example 12.4. Medium-quality Random Number Generator Suitable for Testing.</b></p><div class="example-contents">
+
+<pre class="programlisting">static int xorShift(int y) {
+    y ^= (y &lt;&lt; 6);
+    y ^= (y &gt;&gt;&gt; 21);
+    y ^= (y &lt;&lt; 7);
+    return y;
+}
+</pre>
+</div></div><br class="example-break"/>
+<p><a id="iddle1743" class="indexterm"/><a id="iddle2161" class="indexterm"/><a id="iddle2600" class="indexterm"/><a id="iddle4678" class="indexterm"/><a id="iddle4679" class="indexterm"/><a id="iddle4789" class="indexterm"/><a id="iddle4790" class="indexterm"/><code class="literal">PutTakeTest</code> in <a class="link" href="ch12.html#ch12list05" title="Example 12.5. Producer-consumer Test Program for BoundedBuffer.">Listings 12.5</a> and <a class="link" href="ch12.html#ch12list06" title="Example 12.6. Producer and Consumer Classes Used in PutTakeTest.">12.6</a> starts <span class="emphasis"><em>N</em></span> producer threads that generate elements and enqueue them, and <span class="emphasis"><em>N</em></span> consumer threads that dequeue them. Each thread updates the checksum of the elements as they go in or out, using a perthread checksum that is combined at the end of the test run so as to add no more synchronization or contention than required to test the buffer.</p>
+<p>Depending on your platform, creating and starting a thread can be a moderately heavyweight operation. If your thread is short-running and you start a number of threads in a loop, the threads run sequentially rather than concurrently in the worst case. Even in the not-quite-worst case, the fact that the first thread has a head start on the others means that you may get fewer interleavings than expected: the first thread runs by itself for some amount of time, and then the first two threads run concurrently for some amount of time, and only eventually are all the threads running concurrently. (The same thing happens at the end of the run: the threads that got a head start also finish early.)</p>
+<p>We presented a technique for mitigating this problem in <a class="link" href="ch05s05.html#ch05lev2sec10" title="Latches">Section 5.5.1</a>, using a <code class="literal">CountDownLatch</code> as a starting gate and another as a finish gate. Another way to get the same effect is to use a <code class="literal">CyclicBarrier</code>, initialized with the number of worker threads plus one, and have the worker threads and the test driver wait at the barrier at the beginning and end of their run. This ensures that all threads are up and running before any start working. <code class="literal">PutTakeTest</code> uses this technique to coordinate starting and stopping the worker threads, creating more potential concurrent interleavings. We still can’t guarantee that the scheduler won’t run each thread to completion sequentially, but making the runs long enough reduces the extent to which scheduling distorts our results.</p>
+<p>The final trick employed by <code class="literal">PutTakeTest</code> is to use a deterministic termination criterion so that no additional inter-thread coordination is needed to figure out when the test is finished. The <code class="literal">test</code> method starts exactly as many producers as consumers and each of them <code class="literal">put</code>s or <code class="literal">take</code>s the same number of elements, so the total number of items added and removed is the same.</p>
+<p>Tests like <code class="literal">PutTakeTest</code> tend to be good at finding safety violations. For example, a common error in implementing semaphore-controlled buffers is to forget that the code actually doing the insertion and extraction requires mutual exclusion (using <code class="literal">synchronized</code> or <code class="literal">ReentrantLock</code>). A sample run of <code class="literal">PutTakeTest</code> with a version of <code class="literal">BoundedBuffer</code> that omits making <code class="literal">doInsert</code> and <code class="literal">doExtract synchronized</code> fails fairly quickly. Running <code class="literal">PutTakeTest</code> with a few dozen threads iterating a few million times on buffers of various capacity on various systems increases our confidence about the lack of data corruption in <code class="literal">put</code> and <code class="literal">take</code>.</p>
+<div class="sidebar"><a id="ch12sb02"/><p class="title"><b/></p>
+<p>Tests should be run on multiprocessor systems to increase the diversity of potential interleavings. However, having more than a few CPUs does not necessarily make tests more effective. To maximize the chance of detecting timing-sensitive data races, there should be more active threads than CPUs, so that at any given time some threads are running and some are switched out, thus reducing the predicatability of interactions between threads.</p>
+</div>
+
+<p/><div class="example"><a id="ch12list05"/><p class="title"><b>Example 12.5. Producer-consumer Test Program for <code class="literal">BoundedBuffer</code>.</b></p><div class="example-contents">
+
+
+<pre class="programlisting">public class PutTakeTest {
+    private static final ExecutorService pool
+            = Executors.newCachedThreadPool();
+    private final AtomicInteger putSum = new AtomicInteger(0);
+    private final AtomicInteger takeSum = new AtomicInteger(0);
+    private final CyclicBarrier barrier;
+    private final BoundedBuffer&lt;Integer&gt; bb;
+    private final int nTrials, nPairs;
+
+    public static void main(String[] args) {
+        new PutTakeTest(10, 10, 100000).test(); // <span class="emphasis"><em>sample parameters</em></span>
+        pool.shutdown();
+    }
+
+    PutTakeTest(int capacity, int npairs, int ntrials) {
+        this.bb = new BoundedBuffer&lt;Integer&gt;(capacity);
+        this.nTrials = ntrials;
+        this.nPairs = npairs;
+        this.barrier = new CyclicBarrier(npairs*  2 + 1);
+    }
+
+    void test() {
+        try {
+            for (int i = 0; i &lt;  nPairs; i++) {
+                pool.execute(new Producer());
+                pool.execute(new Consumer());
+            }
+            barrier.await(); // <span class="emphasis"><em>wait for all threads to be ready</em></span>
+            barrier.await(); // <span class="emphasis"><em>wait for all threads to finish</em></span>
+            assertEquals(putSum.get(), takeSum.get());
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    class Producer implements Runnable {  /*  <span class="emphasis"><em>Listing 12.6</em></span>  */ }
+
+    class Consumer implements Runnable {  /*  <span class="emphasis"><em>Listing 12.6</em></span>  */ }
+}
+</pre>
+</div></div><br class="example-break"/>
+
+<p/><div class="example"><a id="ch12list06"/><p class="title"><b>Example 12.6. Producer and Consumer Classes Used in <code class="literal">PutTakeTest</code>.</b></p><div class="example-contents">
+
+
+<pre class="programlisting">/* <span class="emphasis"><em>inner classes of PutTakeTest (Listing 12.5)</em></span>  */
+class Producer implements Runnable {
+    public void run() {
+        try {
+            int seed = (this.hashCode() ^ (int)System.nanoTime());
+            int sum = 0;
+            barrier.await();
+            for (int i = nTrials; i &gt; 0; --i) {
+                bb.put(seed);
+                sum += seed;
+                seed = xorShift(seed);
+            }
+            putSum.getAndAdd(sum);
+            barrier.await();
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+}
+
+class Consumer implements Runnable {
+    public void run() {
+        try {
+            barrier.await();
+            int sum = 0;
+            for (int i = nTrials; i &gt; 0; --i) {
+                sum += bb.take();
+            }
+            takeSum.getAndAdd(sum);
+            barrier.await();
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+}
+</pre>
+</div></div><br class="example-break"/>
+<p><a id="iddle2103" class="indexterm"/><a id="iddle2160" class="indexterm"/><a id="iddle1293" class="indexterm"/><a id="iddle1294" class="indexterm"/><a id="iddle1986" class="indexterm"/><a id="iddle2631" class="indexterm"/><a id="iddle2846" class="indexterm"/><a id="iddle2951" class="indexterm"/><a id="iddle2952" class="indexterm"/><a id="iddle3198" class="indexterm"/><a id="iddle3342" class="indexterm"/><a id="iddle3343" class="indexterm"/><a id="iddle3896" class="indexterm"/><a id="iddle3914" class="indexterm"/><a id="iddle3915" class="indexterm"/><a id="iddle3927" class="indexterm"/><a id="iddle4680" class="indexterm"/><a id="iddle4783" class="indexterm"/><a id="iddle4942" class="indexterm"/>In tests that run until they complete a fixed number of operations, it is possible that the test case will never finish if the code being tested encounters an exception due to a bug. The most common way to handle this is to have the test framework abort tests that do not terminate within a certain amount of time; how long to wait should be determined empirically, and failures must then be analyzed to ensure that the problem wasn’t just that you didn’t wait long enough. (This problem is not unique to testing concurrent classes; sequential tests must also distinguish between long-running and infinite loops.)</p>
+</div>
+<div class="section" title="Testing Resource Management"><div class="titlepage"><div><div><h3 class="title"><a id="ch12lev2sec4"/>Testing Resource Management</h3></div></div></div>
+
+<p>The tests so far have been concerned with a class’s adherence to its specification—that it does what it is supposed to do. A secondary aspect to test is that it does <span class="emphasis"><em>not</em></span> do things it is <span class="emphasis"><em>not</em></span> supposed to do, such as leak resources. Any object that holds or manages other objects should not continue to maintain references to those objects longer than necessary. Such storage leaks prevent garbage collectors from reclaiming memory (or threads, file handles, sockets, database connections, or other limited resources) and can lead to resource exhaustion and application failure.</p>
+<p>Resource management issues are especially important for classes like <code class="literal">BoundedBuffer</code>—the entire reason for bounding a buffer is to prevent application failure due to resource exhaustion when producers get too far ahead of consumers. Bounding causes overly productive producers to block rather than continue to create work that will consume more and more memory or other resources.</p>
+<p>Undesirable memory retention can be easily tested with heap-inspection tools that measure application memory usage; a variety of commercial and open-source heap-profiling tools can do this. The <code class="literal">testLeak</code> method in <a class="link" href="ch12.html#ch12list07" title="Example 12.7. Testing for Resource Leaks.">Listing 12.7</a> contains placeholders for a heap-inspection tool to snapshot the heap, which forces a garbage collection<sup>[<a id="ch12fn05" href="#ftn.ch12fn05" class="footnote">5</a>]</sup> and then records information about the heap size and memory usage.</p>
+<p>The <code class="literal">testLeak</code> method inserts several large objects into a bounded buffer and then removes them; memory usage at heap snapshot #2 should be approximately the same as at heap snapshot #1. On the other hand, if <code class="literal">doExtract</code> forgot to null out the reference to the returned element (<code class="literal">items[i]=null</code>), the reported memory usage at the two snapshots would definitely not be the same. (This is one of the few times where explicit nulling is necessary; most of the time, it is either not helpful or actually harmful [EJ Item 5].)</p>
+</div>
+<div class="section" title="Using Callbacks"><div class="titlepage"><div><div><h3 class="title"><a id="ch12lev2sec5"/>Using Callbacks</h3></div></div></div>
+
+<p>Callbacks to client-provided code can be helpful in constructing test cases; callbacks are often made at known points in an object’s lifecycle that are good opportunities to assert invariants. For example, <code class="literal">ThreadPoolExecutor</code> makes calls to the task <code class="literal">Runnable</code>s and to the <code class="literal">ThreadFactory</code>.</p>
+
+<p/><div class="example"><a id="ch12list07"/><p class="title"><b>Example 12.7. Testing for Resource Leaks.</b></p><div class="example-contents">
+
+
+<pre class="programlisting">class Big { double[] data = new double[100000]; }
+
+void testLeak() throws InterruptedException {
+     BoundedBuffer&lt;Big&gt; bb = new BoundedBuffer&lt;Big&gt;(CAPACITY);
+     int heapSize1 =  /* snapshot heap */ ;
+     for (int i = 0; i &lt; CAPACITY; i++)
+         bb.put(new Big());
+     for (int i = 0; i &lt; CAPACITY; i++)
+         bb.take();
+     int heapSize2 =  /* snapshot heap */ ;
+     assertTrue(Math.abs(heapSize1-heapSize2) &lt; THRESHOLD);
+}
+</pre>
+</div></div><br class="example-break"/>
+<p><a id="iddle2084" class="indexterm"/><a id="iddle2198" class="indexterm"/><a id="iddle2756" class="indexterm"/><a id="iddle2757" class="indexterm"/><a id="iddle3624" class="indexterm"/><a id="iddle4716" class="indexterm"/><a id="iddle4798" class="indexterm"/>Testing a thread pool involves testing a number of elements of execution policy: that additional threads are created when they are supposed to, but not when they are not supposed to; that idle threads get reaped when they are supposed to, etc. Constructing a comprehensive test suite that covers all the possibilities is a major effort, but many of them can be tested fairly simply individually.</p>
+<p>We can instrument thread creation by using a custom thread factory. <code class="literal">TestingThreadFactory</code> in <a class="link" href="ch12.html#ch12list08" title="Example 12.8. Thread Factory for Testing ThreadPoolExecutor.">Listing 12.8</a> maintains a count of created threads; test cases can then verify the number of threads created during a test run. <code class="literal">TestingThreadFactory</code> could be extended to return a custom <code class="literal">Thread</code> that also records when the thread terminates, so that test cases can verify that threads are reaped in accordance with the execution policy.</p>
+<div class="example"><a id="ch12list08"/><p class="title"><b>Example 12.8. Thread Factory for Testing <code class="literal">ThreadPoolExecutor</code>.</b></p><div class="example-contents">
+
+<pre class="programlisting">class TestingThreadFactory implements ThreadFactory {
+    public final AtomicInteger numCreated = new AtomicInteger();
+    private final ThreadFactory factory
+            = Executors.defaultThreadFactory();
+
+    public Thread newThread(Runnable r) {
+        numCreated.incrementAndGet();
+        return factory.newThread(r);
+    }
+}
+</pre>
+</div></div><br class="example-break"/>
+<p>If the core pool size is smaller than the maximum size, the thread pool should grow as demand for execution increases. Submitting long-running tasks to the pool makes the number of executing tasks stay constant for long enough to make a few assertions, such as testing that the pool is expanded as expected, as shown in <a class="link" href="ch12.html#ch12list09" title="Example 12.9. Test Method to Verify Thread Pool Expansion.">Listing 12.9</a>.</p>
+
+<p/><div class="example"><a id="ch12list09"/><p class="title"><b>Example 12.9. Test Method to Verify Thread Pool Expansion.</b></p><div class="example-contents">
+
+
+<pre class="programlisting">public void testPoolExpansion() throws InterruptedException {
+    int MAX_SIZE = 10;
+    ExecutorService exec = Executors.newFixedThreadPool(MAX_SIZE);
+
+    for (int i = 0; i &lt; 10*  MAX_SIZE; i++)
+        exec.execute(new Runnable() {
+            public void run() {
+                try {
+                    Thread.sleep(Long.MAX_VALUE);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
+            }
+        });
+    for (int i = 0;
+         i &lt; 20 &amp;&amp; threadFactory.numCreated.get() &lt; MAX_SIZE;
+         i++)
+        Thread.sleep(100);
+    assertEquals(threadFactory.numCreated.get(), MAX_SIZE);
+    exec.shutdownNow();
+}
+</pre>
+</div></div><br class="example-break"/>
+</div>
+<div class="section" title="Generating More Interleavings"><div class="titlepage"><div><div><h3 class="title"><a id="ch12lev2sec6"/>Generating More Interleavings</h3></div></div></div>
+
+<p><a id="iddle1101" class="indexterm"/><a id="iddle1102" class="indexterm"/><a id="iddle2770" class="indexterm"/><a id="iddle2771" class="indexterm"/><a id="iddle2890" class="indexterm"/>Since many of the potential failures in concurrent code are low-probability events, testing for concurrency errors is a numbers game, but there are some things you can do to improve your chances. We’ve already mentioned how running on multiprocessor systems with fewer processors than active threads can generate more interleavings than either a single-processor system or one with many processors. Similarly, testing on a variety of systems with different processor counts, operating systems, and processor architectures can disclose problems that might not occur on all systems.</p>
+<p>A useful trick for increasing the number of interleavings, and therefore more effectively exploring the state space of your programs, is to use <code class="literal">Thread.yield</code> to encourage more context switches during operations that access shared state. (The effectiveness of this technique is platform-specific, since the JVM is free to treat <code class="literal">Thread.yield</code> as a no-op [JLS 17.9]; using a short but nonzero sleep would be slower but more reliable.) The method in <a class="link" href="ch12.html#ch12list10" title="Example 12.10. Using Thread.yield to Generate More Interleavings.">Listing 12.10</a> transfers credits from one account to another; between the two update operations, invariants such as “sum of all accounts equals zero” do not hold. By sometimes yielding in the middle of an operation, you may activate timing-sensitive bugs in code that does not use adequate synchronization to access state. The inconvenience of adding these calls for testing and removing them for production can be reduced by adding them using aspect-oriented programming (AOP) tools.</p>
+
+<p/><div class="example"><a id="ch12list10"/><p class="title"><b>Example 12.10. Using <code class="literal">Thread.yield</code> to Generate More Interleavings.</b></p><div class="example-contents">
+
+
+<pre class="programlisting">public synchronized void transferCredits(Account from,
+                                         Account to,
+                                         int amount) {
+    from.setBalance(from.getBalance() - amount);
+    if (random.nextInt(1000) &gt; THRESHOLD)
+        Thread.yield();
+    to.setBalance(to.getBalance() + amount);
+}
+</pre>
+</div></div><br class="example-break"/>
+</div>
+</div>
+
+
+
+
+
+
+
+
+<div class="footnotes"><br/><hr/><div class="footnote"><p><sup>[<a id="ftn.ch12fn01" href="#ch12fn01" class="para">1</a>] </sup>Bugs that disappear when you add debugging or test code are playfully called <span class="emphasis"><em>Heisenbugs</em></span>.</p></div><div class="footnote"><p><sup>[<a id="ftn.ch12fn02" href="#ch12fn02" class="para">2</a>] </sup>In a counting semaphore, the permits are not represented explicitly or associated with an owning thread; a <code class="literal">release</code> operation creates a permit and an <code class="literal">acquire</code> operation consumes one.</p></div><div class="footnote"><p><sup>[<a id="ftn.ch12fn03" href="#ch12fn03" class="para">3</a>] </sup><code class="literal"><a class="ulink" href="http://gee.cs.oswego.edu/cgi-bin/viewcvs.cgi/jsr166/src/test/tck/JSR166TestCase.java">http://gee.cs.oswego.edu/cgi-bin/viewcvs.cgi/jsr166/src/test/tck/JSR166TestCase.java</a></code></p></div><div class="footnote"><p><sup>[<a id="ftn.ch12fn04" href="#ch12fn04" class="para">4</a>] </sup>Many benchmarks are, unbeknownst to their developers or users, simply tests of how great a concurrency bottleneck the RNG is.</p></div><div class="footnote"><p><sup>[<a id="ftn.ch12fn05" href="#ch12fn05" class="para">5</a>] </sup>Technically, it is impossible to <span class="emphasis"><em>force</em></span> a garbage collection; <code class="literal">System.gc</code> only <span class="emphasis"><em>suggests</em></span> to the JVM that this might be a good time to perform a garbage collection. HotSpot can be instructed to ignore <code class="literal">System.gc</code> calls with <code class="literal">-XX:+DisableExplicitGC</code>.</p></div></div></div></body></html>

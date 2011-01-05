@@ -1,0 +1,106 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN" "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml"><head><title>Anatomy of a Synchronizer</title><link rel="stylesheet" href="styles/convert.css" type="text/css"/></head><body><div class="section" title="Anatomy of a Synchronizer"><div class="titlepage"><div><div><h2 class="title"><a id="ch14lev1sec4"/>Anatomy of a Synchronizer</h2></div></div></div>
+
+<p>The interfaces of <code class="literal">ReentrantLock</code> and <code class="literal">Semaphore</code> have a lot in common. Both classes act as a “gate”, allowing only a limited number of threads to pass at a time; threads arrive at the gate and are allowed through (<code class="literal">lock</code> or <code class="literal">acquire</code> returns successfully), are made to wait (<code class="literal">lock</code> or <code class="literal">acquire</code> blocks), or are turned away (<code class="literal">tryLock</code> or <code class="literal">tryAcquire</code> returns false, indicating that the lock or permit did not become available in the time allowed). Further, both allow interruptible, uninterruptible, and timed acquisition attempts, and both allow a choice of fair or nonfair queueing of waiting threads.</p>
+<p>Given this commonality, you might think that <code class="literal">Semaphore</code> was implemented on top of <code class="literal">ReentrantLock</code>, or perhaps <code class="literal">ReentrantLock</code> was implemented as a <code class="literal">Semaphore</code> with one permit. This would be entirely practical; it is a common exercise to prove that a counting semaphore can be implemented using a lock (as in <code class="literal">SemaphoreOnLock</code> in <a class="link" href="ch14s04.html#ch14list12" title="Example 14.12. Counting Semaphore Implemented Using Lock.">Listing 14.12</a>) and that a lock can be implemented using a counting semaphore.</p>
+<p>In actuality, they are both implemented using a common base class, <code class="literal">Abstract-QueuedSynchronizer</code> (AQS)—as are many other synchronizers. AQS is a framework for building locks and synchronizers, and a surprisingly broad range of synchronizers can be built easily and efficiently using it. Not only are <code class="literal">ReentrantLock</code> and <code class="literal">Semaphore</code> built using AQS, but so are <code class="literal">CountDownLatch</code>, <code class="literal">ReentrantReadWriteLock</code>, <code class="literal">SynchronousQueue</code>,<sup>[<a id="ch14fn12" href="#ftn.ch14fn12" class="footnote">12</a>]</sup> and <code class="literal">FutureTask</code>.</p>
+
+<p/><div class="example"><a id="ch14list11"/><p class="title"><b>Example 14.11. Bounded Buffer Using Explicit Condition Variables.</b></p><div class="example-contents">
+
+
+<pre class="programlisting">@ThreadSafe
+public class ConditionBoundedBuffer&lt;T&gt; {
+    protected final Lock lock = new ReentrantLock();
+    <span class="emphasis"><em>// CONDITION PREDICATE: <span class="strong"><strong>notFull</strong></span> (count &lt; items.length)</em></span>
+    private final Condition notFull    = lock.newCondition();
+    <span class="emphasis"><em>// CONDITION PREDICATE: notEmpty (count &gt; 0)</em></span>
+    private final Condition <span class="strong"><strong>notEmpty</strong></span>  = lock.newCondition();
+    @GuardedBy("lock")
+    private final T[] items = (T[]) new Object[BUFFER_SIZE];
+    @GuardedBy("lock") private int tail, head, count;
+
+    <span class="emphasis"><em>// BLOCKS-UNTIL: notFull</em></span>
+    public void put(T x) throws InterruptedException {
+        lock.lock();
+        try {
+            while (count == items.length)
+                <span class="strong"><strong>notFull.await();</strong></span>
+            items[tail] = x;
+            if (++tail == items.length)
+                tail = 0;
+            ++count;
+            <span class="strong"><strong>notEmpty.signal();</strong></span>
+        } finally {
+            lock.unlock();
+        }
+    }
+
+    <span class="emphasis"><em>// BLOCKS-UNTIL: notEmpty</em></span>
+    public T take() throws InterruptedException {
+        lock.lock();
+        try {
+            while (count == 0)
+                <span class="strong"><strong>notEmpty.await();</strong></span>
+            T x = items[head];
+            items[head] = null;
+            if (++head == items.length)
+                head = 0;
+            --count;
+            <span class="strong"><strong>notFull.signal();</strong></span>
+            return x;
+        } finally {
+            lock.unlock();
+        }
+    }
+}
+</pre>
+</div></div><br class="example-break"/>
+
+<p/><div class="example"><a id="ch14list12"/><p class="title"><b>Example 14.12. Counting Semaphore Implemented Using <code class="literal">Lock</code>.</b></p><div class="example-contents">
+
+
+<pre class="programlisting"><span class="emphasis"><em>// Not really how java.util.concurrent.Semaphore is implemented</em></span>
+@ThreadSafe
+public class SemaphoreOnLock {
+    private final Lock lock = new ReentrantLock();
+    <span class="emphasis"><em>// CONDITION PREDICATE: permitsAvailable (permits &gt; 0)</em></span>
+    private final Condition permitsAvailable = lock.newCondition();
+    @GuardedBy("lock") private int permits;
+
+    SemaphoreOnLock(int initialPermits) {
+        lock.lock();
+        try {
+            permits = initialPermits;
+        } finally {
+            lock.unlock();
+        }
+    }
+
+    <span class="emphasis"><em>// BLOCKS-UNTIL: permitsAvailable</em></span>
+    public void acquire() throws InterruptedException {
+        lock.lock();
+        try {
+            while (permits &lt;= 0)
+                permitsAvailable.await();
+            --permits;
+        } finally {
+            lock.unlock();
+        }
+    }
+
+    public void release() {
+        lock.lock();
+        try {
+            ++permits;
+            permitsAvailable.signal();
+        } finally {
+            lock.unlock();
+        }
+    }
+}
+</pre>
+</div></div><br class="example-break"/>
+<p><a id="iddle1703" class="indexterm"/><a id="iddle2174" class="indexterm"/><a id="iddle4152" class="indexterm"/><a id="iddle1117" class="indexterm"/><a id="iddle1600" class="indexterm"/><a id="iddle1601" class="indexterm"/><a id="iddle3049" class="indexterm"/><a id="iddle3050" class="indexterm"/><a id="iddle3063" class="indexterm"/><a id="iddle3064" class="indexterm"/><a id="iddle3834" class="indexterm"/><a id="iddle3835" class="indexterm"/><a id="iddle4088" class="indexterm"/><a id="iddle4089" class="indexterm"/><a id="iddle4404" class="indexterm"/><a id="iddle4405" class="indexterm"/><a id="iddle4592" class="indexterm"/><a id="iddle4593" class="indexterm"/>AQS handles many of the details of implementing a synchronizer, such as FIFO queuing of waiting threads. Individual synchronizers can define flexible criteria for whether a thread should be allowed to pass or be required to wait.</p>
+<p>Using AQS to build synchronizers offers several benefits. Not only does it substantially reduce the implementation effort, but you also needn’t pay for multiple points of contention, as you would when constructing one synchronizer on top of another. In <code class="literal">SemaphoreOnLock</code>, acquiring a permit has two places where it might block—once at the lock guarding the semaphore state, and then again if a permit is not available. Synchronizers built with AQS have only one point where they might block, reducing context-switch overhead and improving throughput. AQS was designed for scalability, and all the synchronizers in <code class="literal">java.util.concurrent</code> that are built with AQS benefit from this.</p>
+<div class="footnotes"><br/><hr/><div class="footnote"><p><sup>[<a id="ftn.ch14fn12" href="#ch14fn12" class="para">12</a>] </sup>Java6 replaces the AQS-based <code class="literal">SynchronousQueue</code> with a (more scalable) nonblocking version.</p></div></div></div></body></html>

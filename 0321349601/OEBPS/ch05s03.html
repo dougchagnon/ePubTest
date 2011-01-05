@@ -1,0 +1,104 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN" "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml"><head><title>Blocking Queues and the Producer-consumer Pattern</title><link rel="stylesheet" href="styles/convert.css" type="text/css"/></head><body><div class="section" title="Blocking Queues and the Producer-consumer Pattern"><div class="titlepage"><div><div><h2 class="title"><a id="ch05lev1sec3"/>Blocking Queues and the Producer-consumer Pattern</h2></div></div></div>
+
+<p>Blocking queues provide blocking <code class="literal">put</code> and <code class="literal">take</code> methods as well as the timed equivalents <code class="literal">offer</code> and <code class="literal">poll</code>. If the queue is full, <code class="literal">put</code> blocks until space becomes available; if the queue is empty, <code class="literal">take</code> blocks until an element is available. Queues can be bounded or unbounded; unbounded queues are never full, so a <code class="literal">put</code> on an unbounded queue never blocks.</p>
+<p>Blocking queues support the <span class="emphasis"><em>producer-consumer</em></span> design pattern. A producerconsumer design separates the identification of work to be done from the execution of that work by placing work items on a “to do” list for later processing, rather than processing them immediately as they are identified. The producerconsumer pattern simplifies development because it removes code dependencies between producer and consumer classes, and simplifies workload management <a id="iddle1248" class="indexterm"/><a id="iddle1249" class="indexterm"/><a id="iddle1578" class="indexterm"/><a id="iddle2259" class="indexterm"/><a id="iddle2379" class="indexterm"/><a id="iddle2380" class="indexterm"/><a id="iddle3622" class="indexterm"/><a id="iddle3773" class="indexterm"/><a id="iddle3774" class="indexterm"/><a id="iddle3919" class="indexterm"/><a id="iddle4007" class="indexterm"/><a id="iddle4796" class="indexterm"/><a id="iddle4862" class="indexterm"/><a id="iddle4863" class="indexterm"/><a id="iddle5156" class="indexterm"/><a id="iddle5157" class="indexterm"/><a id="iddle5158" class="indexterm"/>by decoupling activities that may produce or consume data at different or variable rates.</p>
+<p>In a producer-consumer design built around a blocking queue, producers place data onto the queue as it becomes available, and consumers retrieve data from the queue when they are ready to take the appropriate action. Producers don’t need to know anything about the identity or number of consumers, or even whether they are the only producer—all they have to do is place data items on the queue. Similarly, consumers need not know who the producers are or where the work came from. <code class="literal">BlockingQueue</code> simplifies the implementation of producerconsumer designs with any number of producers and consumers. One of the most common producer-consumer designs is a thread pool coupled with a work queue; this pattern is embodied in the <code class="literal">Executor</code> task execution framework that is the subject of <a class="link" href="ch06.html" title="Chapter 6. Task Execution">Chapters 6</a> and <a class="link" href="ch08.html" title="Chapter 8. Applying Thread Pools">8</a>.</p>
+<p>The familiar division of labor for two people washing the dishes is an example of a producer-consumer design: one person washes the dishes and places them in the dish rack, and the other person retrieves the dishes from the rack and dries them. In this scenario, the dish rack acts as a blocking queue; if there are no dishes in the rack, the consumer waits until there are dishes to dry, and if the rack fills up, the producer has to stop washing until there is more space. This analogy extends to multiple producers (though there may be contention for the sink) and multiple consumers; each worker interacts only with the dish rack. No one needs to know how many producers or consumers there are, or who produced a given item of work.</p>
+<p>The labels “producer” and “consumer” are relative; an activity that acts as a consumer in one context may act as a producer in another. Drying the dishes “consumes” clean wet dishes and “produces” clean dry dishes. A third person wanting to help might put away the dry dishes, in which case the drier is both a consumer and a producer, and there are now two shared work queues (each of which may block the drier from proceeding.)</p>
+<p>Blocking queues simplify the coding of consumers, since <code class="literal">take</code> blocks until data is available. If the producers don’t generate work fast enough to keep the consumers busy, the consumers just wait until more work is available. Sometimes this is perfectly acceptable (as in a server application when no client is requesting service), and sometimes it indicates that the ratio of producer threads to consumer threads should be adjusted to achieve better utilization (as in a web crawler or other application in which there is effectively infinite work to do).</p>
+<p>If the producers consistently generate work faster than the consumers can process it, eventually the application will run out of memory because work items will queue up without bound. Again, the blocking nature of <code class="literal">put</code> greatly simplifies coding of producers; if we use a <span class="emphasis"><em>bounded queue</em></span>, then when the queue fills up the producers block, giving the consumers time to catch up because a blocked producer cannot generate more work.</p>
+<p>Blocking queues also provide an <code class="literal">offer</code> method, which returns a failure status if the item cannot be enqueued. This enables you to create more flexible policies for dealing with overload, such as shedding load, serializing excess work items and writing them to disk, reducing the number of producer threads, or throttling producers in some other manner.</p>
+<div class="sidebar"><a id="ch05sb03"/><p class="title"><b/></p>
+<p>Bounded queues are a powerful resource management tool for building reliable applications: they make your program more robust to overload by throttling activities that threaten to produce more work than can be handled.</p>
+</div>
+<p>While the producer-consumer pattern enables producer and consumer <span class="emphasis"><em>code</em></span> to be decoupled from each other, their <span class="emphasis"><em>behavior</em></span> is still coupled indirectly through the shared work queue. It is tempting to assume that the consumers will always keep up, so that you need not place any bounds on the size of work queues, but this is a prescription for rearchitecting your system later. <span class="emphasis"><em>Build resource management into your design early using blocking queues—it is a lot easier to do this up front than to retrofit it later.</em></span> Blocking queues make this easy for a number of situations, but if blocking queues don’t fit easily into your design, you can create other blocking data structures using <code class="literal">Semaphore</code> (see <a class="link" href="ch05s05.html#ch05lev2sec12" title="Semaphores">Section 5.5.3</a>).</p>
+<p>The class library contains several implementations of <code class="literal">BlockingQueue</code>. <code class="literal">LinkedBlockingQueue</code> and <code class="literal">ArrayBlockingQueue</code> are FIFO queues, analogous to <code class="literal">LinkedList</code> and <code class="literal">ArrayList</code> but with better concurrent performance than a synchronized <code class="literal">List</code>. <code class="literal">PriorityBlockingQueue</code> is a priority-ordered queue, which is useful when you want to process elements in an order other than FIFO. Just like other sorted collections, <code class="literal">PriorityBlockingQueue</code> can compare elements according to their natural order (if they implement <code class="literal">Comparable</code>) or using a <code class="literal">Comparator</code>.</p>
+<p>The last <code class="literal">BlockingQueue</code> implementation, <code class="literal">SynchronousQueue</code>, is not really a queue at all, in that it maintains no storage space for queued elements. Instead, it maintains a list of queued <span class="emphasis"><em>threads</em></span> waiting to enqueue or dequeue an element. In the dish-washing analogy, this would be like having no dish rack, but instead handing the washed dishes directly to the next available dryer. While this may seem a strange way to implement a queue, it reduces the latency associated with moving data from producer to consumer because the work can be handed off directly. (In a traditional queue, the enqueue and dequeue operations must complete sequentially before a unit of work can be handed off.) The direct handoff also feeds back more information about the state of the task to the producer; when the handoff is accepted, it knows a consumer has taken responsibility for it, rather than simply letting it sit on a queue somewhere—much like the difference between handing a document to a colleague and merely putting it in her mailbox and hoping she gets it soon. Since a <code class="literal">SynchronousQueue</code> has no storage capacity, <code class="literal">put</code> and <code class="literal">take</code> will block unless another thread is already waiting to participate in the handoff. Synchronous queues are generally suitable only when there are enough consumers that there nearly always will be one ready to take the handoff.</p>
+<div class="section" title="Example: Desktop Search"><div class="titlepage"><div><div><h3 class="title"><a id="ch05lev2sec7"/>Example: Desktop Search</h3></div></div></div>
+
+<p>One type of program that is amenable to decomposition into producers and consumers is an agent that scans local drives for documents and indexes them for later searching, similar to Google Desktop or the Windows Indexing service. <code class="literal">DiskCrawler</code> in <a class="link" href="ch05s03.html#ch05list08" title="Example 5.8. Producer and Consumer Tasks in a Desktop Search Application.">Listing 5.8</a> shows a producer task that searches a file hierarchy <a id="iddle2115" class="indexterm"/><a id="iddle2123" class="indexterm"/><a id="iddle1121" class="indexterm"/><a id="iddle1390" class="indexterm"/><a id="iddle1391" class="indexterm"/><a id="iddle1705" class="indexterm"/><a id="iddle1706" class="indexterm"/><a id="iddle1840" class="indexterm"/><a id="iddle2345" class="indexterm"/><a id="iddle2346" class="indexterm"/><a id="iddle2987" class="indexterm"/><a id="iddle3663" class="indexterm"/><a id="iddle3761" class="indexterm"/><a id="iddle3764" class="indexterm"/><a id="iddle3765" class="indexterm"/><a id="iddle3766" class="indexterm"/><a id="iddle4597" class="indexterm"/><a id="iddle4811" class="indexterm"/><a id="iddle4812" class="indexterm"/><a id="iddle1543" class="indexterm"/><a id="iddle1544" class="indexterm"/><a id="iddle3359" class="indexterm"/><a id="iddle3519" class="indexterm"/><a id="iddle3611" class="indexterm"/><a id="iddle3731" class="indexterm"/><a id="iddle4183" class="indexterm"/><a id="iddle4184" class="indexterm"/><a id="iddle4814" class="indexterm"/><a id="iddle4815" class="indexterm"/>for files meeting an indexing criterion and puts their names on the work queue; <code class="literal">Indexer</code> in <a class="link" href="ch05s03.html#ch05list08" title="Example 5.8. Producer and Consumer Tasks in a Desktop Search Application.">Listing 5.8</a> shows the consumer task that takes file names from the queue and indexes them.</p>
+<p>The producer-consumer pattern offers a thread-friendly means of decomposing the desktop search problem into simpler components. Factoring file-crawling and indexing into separate activities results in code that is more readable and reusable than with a monolithic activity that does both; each of the activities has only a single task to do, and the blocking queue handles all the flow control, so the code for each is simpler and clearer.</p>
+<p>The producer-consumer pattern also enables several performance benefits. Producers and consumers can execute concurrently; if one is I/O-bound and the other is CPU-bound, executing them concurrently yields better overall throughput than executing them sequentially. If the producer and consumer activities are parallelizable to different degrees, tightly coupling them reduces parallelizability to that of the less parallelizable activity.</p>
+<p><a class="link" href="ch05s03.html#ch05list09" title="Example 5.9. Starting the Desktop Search.">Listing 5.9</a> starts several crawlers and indexers, each in their own thread. As written, the consumer threads never exit, which prevents the program from terminating; we examine several techniques for addressing this problem in <a class="link" href="ch07.html" title="Chapter 7. Cancellation and Shutdown">Chapter 7</a>. While this example uses explicitly managed threads, many producer-consumer designs can be expressed using the <code class="literal">Executor</code> task execution framework, which itself uses the producer-consumer pattern.</p>
+</div>
+<div class="section" title="Serial Thread Confinement"><div class="titlepage"><div><div><h3 class="title"><a id="ch05lev2sec8"/>Serial Thread Confinement</h3></div></div></div>
+
+<p>The blocking queue implementations in <code class="literal">java.util.concurrent</code> all contain sufficient internal synchronization to safely publish objects from a producer thread to the consumer thread.</p>
+<p>For mutable objects, producer-consumer designs and blocking queues facilitate <span class="emphasis"><em>serial thread confinement</em></span> for handing off ownership of objects from producers to consumers. A thread-confined object is owned exclusively by a single thread, but that ownership can be “transferred” by publishing it safely where only one other thread will gain access to it and ensuring that the publishing thread does not access it after the handoff. The safe publication ensures that the object’s state is visible to the new owner, and since the original owner will not touch it again, it is now confined to the new thread. The new owner may modify it freely since it has exclusive access.</p>
+<p>Object pools exploit serial thread confinement, “lending” an object to a requesting thread. As long as the pool contains sufficient internal synchronization to publish the pooled object safely, and as long as the clients do not themselves publish the pooled object or use it after returning it to the pool, ownership can be transferred safely from thread to thread.</p>
+<p>One could also use other publication mechanisms for transferring ownership of a mutable object, but it is necessary to ensure that only one thread receives the object being handed off. Blocking queues make this easy; with a little more work, it could also done with the atomic <code class="literal">remove</code> method of <code class="literal">ConcurrentMap</code> or the <code class="literal">compareAndSet</code> method of <code class="literal">AtomicReference</code>.</p>
+
+<p/><div class="example"><a id="ch05list08"/><p class="title"><b>Example 5.8. Producer and Consumer Tasks in a Desktop Search Application.</b></p><div class="example-contents">
+
+
+<pre class="programlisting">public class FileCrawler implements Runnable {
+    private final BlockingQueue&lt;File&gt; fileQueue;
+    private final FileFilter fileFilter;
+    private final File root;
+    ...
+    public void run() {
+        try {
+            crawl(root);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+    }
+
+    private void crawl(File root) throws InterruptedException {
+        File[] entries = root.listFiles(fileFilter);
+        if (entries != null) {
+            for (File entry : entries)
+                if (entry.isDirectory())
+                    crawl(entry);
+                else if (!alreadyIndexed(entry))
+                    fileQueue.put(entry);
+        }
+    }
+}
+
+public class Indexer implements Runnable {
+    private final BlockingQueue&lt;File&gt; queue;
+
+    public Indexer(BlockingQueue&lt;File&gt; queue) {
+        this.queue = queue;
+    }
+
+    public void run() {
+        try {
+            while (true)
+                indexFile(queue.take());
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+    }
+}
+</pre>
+</div></div><br class="example-break"/>
+
+<p/><div class="example"><a id="ch05list09"/><p class="title"><b>Example 5.9. Starting the Desktop Search.</b></p><div class="example-contents">
+
+
+<pre class="programlisting">public static void startIndexing(File[] roots) {
+    BlockingQueue&lt;File&gt; queue = new LinkedBlockingQueue&lt;File&gt;(BOUND);
+    FileFilter filter = new FileFilter() {
+        public boolean accept(File file) { return true; }
+    };
+
+    for (File root : roots)
+        new Thread(new FileCrawler(queue, filter, root)).start();
+
+    for (int i = 0; i &lt; N_CONSUMERS; i++)
+        new Thread(new Indexer(queue)).start();
+}
+</pre>
+</div></div><br class="example-break"/>
+</div>
+<div class="section" title="Deques and Work Stealing"><div class="titlepage"><div><div><h3 class="title"><a id="ch05lev2sec9"/>Deques and Work Stealing</h3></div></div></div>
+
+<p><a id="iddle1066" class="indexterm"/><a id="iddle1067" class="indexterm"/><a id="iddle1124" class="indexterm"/><a id="iddle1208" class="indexterm"/><a id="iddle1213" class="indexterm"/><a id="iddle1482" class="indexterm"/><a id="iddle1518" class="indexterm"/><a id="iddle1576" class="indexterm"/><a id="iddle1577" class="indexterm"/><a id="iddle1599" class="indexterm"/><a id="iddle1886" class="indexterm"/><a id="iddle1890" class="indexterm"/><a id="iddle2799" class="indexterm"/><a id="iddle2985" class="indexterm"/><a id="iddle2986" class="indexterm"/><a id="iddle3430" class="indexterm"/><a id="iddle3431" class="indexterm"/><a id="iddle3432" class="indexterm"/><a id="iddle3433" class="indexterm"/><a id="iddle3434" class="indexterm"/><a id="iddle3435" class="indexterm"/><a id="iddle3436" class="indexterm"/><a id="iddle3437" class="indexterm"/><a id="iddle3689" class="indexterm"/><a id="iddle4100" class="indexterm"/><a id="iddle4101" class="indexterm"/><a id="iddle4747" class="indexterm"/><a id="iddle5146" class="indexterm"/><a id="iddle5147" class="indexterm"/><a id="iddle5148" class="indexterm"/><a id="iddle5149" class="indexterm"/><a id="iddle5150" class="indexterm"/><a id="iddle5161" class="indexterm"/><a id="iddle5162" class="indexterm"/><a id="iddle5163" class="indexterm"/><a id="iddle5164" class="indexterm"/>Java 6 also adds another two collection types, <code class="literal">Deque</code> (pronounced “deck”) and <code class="literal">BlockingDeque</code>, that extend <code class="literal">Queue</code> and <code class="literal">BlockingQueue</code>. A <code class="literal">Deque</code> is a doubleended queue that allows efficient insertion and removal from both the head and the tail. Implementations include <code class="literal">ArrayDeque</code> and <code class="literal">LinkedBlockingDeque</code>.</p>
+<p>Just as blocking queues lend themselves to the producer-consumer pattern, deques lend themselves to a related pattern called <span class="emphasis"><em>work stealing</em></span>. A producerconsumer design has one shared work queue for all consumers; in a work stealing design, every consumer has its own deque. If a consumer exhausts the work in its own deque, it can steal work from the <span class="emphasis"><em>tail</em></span> of someone else’s deque. Work stealing can be more scalable than a traditional producer-consumer design because workers don’t contend for a shared work queue; most of the time they access only their own deque, reducing contention. When a worker has to access another’s queue, it does so from the tail rather than the head, further reducing contention.</p>
+<p>Work stealing is well suited to problems in which consumers are also producers—when performing a unit of work is likely to result in the identification of more work. For example, processing a page in a web crawler usually results in the identification of new pages to be crawled. Similarly, many graph-exploring algorithms, such as marking the heap during garbage collection, can be efficiently parallelized using work stealing. When a worker identifies a new unit of work, it places it at the end of its own deque (or alternatively, in a <span class="emphasis"><em>work sharing</em></span> design, on that of another worker); when its deque is empty, it looks for work at the end of someone else’s deque, ensuring that each worker stays busy.</p>
+</div>
+</div></body></html>

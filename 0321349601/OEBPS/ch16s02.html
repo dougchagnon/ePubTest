@@ -1,0 +1,110 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN" "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml"><head><title>Publication</title><link rel="stylesheet" href="styles/convert.css" type="text/css"/></head><body><div class="section" title="Publication"><div class="titlepage"><div><div><h2 class="title"><a id="ch16lev1sec2"/>Publication</h2></div></div></div>
+
+<p><a class="link" href="ch03.html" title="Chapter 3. Sharing Objects">Chapter 3</a> explored how an object could be safely or improperly published. The safe publication techniques described there derive their safety from guarantees provided by the JMM; the risks of improper publication are consequences of the absence of a <span class="emphasis"><em>happens-before</em></span> ordering between publishing a shared object and accessing it from another thread.</p>
+<div class="section" title="Unsafe Publication"><div class="titlepage"><div><div><h3 class="title"><a id="ch16lev2sec5"/>Unsafe Publication</h3></div></div></div>
+
+<p>The possibility of reordering in the absence of a <span class="emphasis"><em>happens-before</em></span> relationship explains why publishing an object without adequate synchronization can allow another thread to see a <span class="emphasis"><em>partially constructed object</em></span> (see <a class="link" href="ch03s05.html" title="Safe Publication">Section 3.5</a>). Initializing a new object involves writing to variables—the new object’s fields. Similarly, publishing a reference involves writing to another variable—the reference to the new object. <a id="iddle2211" class="indexterm"/><a id="iddle2739" class="indexterm"/><a id="iddle2949" class="indexterm"/>If you do not ensure that publishing the shared reference <span class="emphasis"><em>happens-before</em></span> another thread loads that shared reference, then the write of the reference to the new object can be reordered (from the perspective of the thread consuming the object) with the writes to its fields. In that case, another thread could see an up-to-date value for the object reference but <span class="emphasis"><em>out-of-date values for some or all of that object’s state</em></span>—a partially constructed object.</p>
+<p>Unsafe publication can happen as a result of an incorrect lazy initialization, as shown in Figure 16.3. At first glance, the only problem here seems to be the race condition described in <a class="link" href="ch02s02.html#ch02lev2sec3" title="Example: Race Conditions in Lazy Initialization">Section 2.2.2</a>. Under certain circumstances, such as when all instances of the <code class="literal">Resource</code> are identical, you might be willing to overlook these (along with the inefficiency of possibly creating the <code class="literal">Resource</code> more than once). Unfortunately, even if these defects are overlooked, <code class="literal">UnsafeLazyInitialization</code> is still not safe, because another thread could observe a reference to a partially constructed <code class="literal">Resource</code>.</p>
+<div class="example"><a id="ch16list03"/><p class="title"><b>Example 16.3. Unsafe Lazy Initialization. <span class="emphasis"><em>Don’t Do this.</em></span></b></p><div class="example-contents">
+
+<div class="mediaobject"><img src="graphics/face.jpg" width="52" alt="Unsafe Lazy Initialization. Don’t Do this."/></div>
+<pre class="programlisting">@NotThreadSafe
+public class UnsafeLazyInitialization {
+    private static Resource resource;
+
+    public static Resource getInstance() {
+        if (resource == null)
+            resource = new Resource();  // unsafe publication
+        return resource;
+    }
+}
+</pre>
+</div></div><br class="example-break"/>
+<p>Suppose thread <span class="emphasis"><em>A</em></span> is the first to invoke <code class="literal">getInstance</code>. It sees that <code class="literal">resource</code> is <code class="literal">null</code>, instantiates a new <code class="literal">Resource</code>, and sets <code class="literal">resource</code> to reference it. When thread <span class="emphasis"><em>B</em></span> later calls <code class="literal">getInstance</code>, it might see that <code class="literal">resource</code> already has a non-null value and just use the already constructed <code class="literal">Resource</code>. This might look harmless at first, but <span class="emphasis"><em>there is no happens-before ordering between the writing of resource in A and the reading of resource in B</em></span>. A data race has been used to publish the object, and therefore <span class="emphasis"><em>B</em></span> is not guaranteed to see the correct state of the <code class="literal">Resource</code>.</p>
+<p>The <code class="literal">Resource</code> constructor changes the fields of the freshly allocated <code class="literal">Resource</code> from their default values (written by the <code class="literal">Object</code> constructor) to their initial values. Since neither thread used synchronization, <span class="emphasis"><em>B</em></span> could possibly see <span class="emphasis"><em>A</em></span>’s actions in a different order than <span class="emphasis"><em>A</em></span> performed them. So even though <span class="emphasis"><em>A</em></span> initialized the <code class="literal">Resource</code> before setting <code class="literal">resource</code> to reference it, <span class="emphasis"><em>B</em></span> could see the write to <code class="literal">resource</code> as occurring <span class="emphasis"><em>before</em></span> the writes to the fields of the <code class="literal">Resource</code>. <span class="emphasis"><em>B</em></span> could thus see a partially constructed <code class="literal">Resource</code> that may well be in an invalid state—and whose state may unexpectedly change later.</p>
+<div class="sidebar"><a id="ch16sb02"/><p class="title"><b/></p>
+<p><a id="iddle2529" class="indexterm"/><a id="iddle2699" class="indexterm"/><a id="iddle2743" class="indexterm"/><a id="iddle2901" class="indexterm"/><a id="iddle3727" class="indexterm"/><a id="iddle4035" class="indexterm"/>With the exception of immutable objects, it is not safe to use an object that has been initialized by another thread unless the publication <span class="emphasis"><em>happensbefore</em></span> the consuming thread uses it.</p>
+</div>
+</div>
+<div class="section" title="Safe Publication"><div class="titlepage"><div><div><h3 class="title"><a id="ch16lev2sec6"/>Safe Publication</h3></div></div></div>
+
+<p>The safe-publication idioms described in <a class="link" href="ch03.html" title="Chapter 3. Sharing Objects">Chapter 3</a> ensure that the published object is visible to other threads because they ensure the publication <span class="emphasis"><em>happens-before</em></span> the consuming thread loads a reference to the published object. If thread <span class="emphasis"><em>A</em></span> places <span class="emphasis"><em>X</em></span> on a <code class="literal">BlockingQueue</code> (and no thread subsequently modifies it) and thread <span class="emphasis"><em>B</em></span> retrieves it from the queue, <span class="emphasis"><em>B</em></span> is guaranteed to see <span class="emphasis"><em>X</em></span> as <span class="emphasis"><em>A</em></span> left it. This is because the <code class="literal">BlockingQueue</code> implementations have sufficient internal synchronization to ensure that the <code class="literal">put</code> <span class="emphasis"><em>happens-before</em></span> the <code class="literal">take</code>. Similarly, using a shared variable guarded by a lock or a shared volatile variable ensures that reads and writes of that variable are ordered by <span class="emphasis"><em>happens-before</em></span>.</p>
+<p>This <span class="emphasis"><em>happens-before</em></span> guarantee is actually a stronger promise of visibility and ordering than made by safe publication. When <span class="emphasis"><em>X</em></span> is safely published from <span class="emphasis"><em>A</em></span> to <span class="emphasis"><em>B</em></span>, the safe publication guarantees visibility of the state of <span class="emphasis"><em>X</em></span>, but not of the state of other variables <span class="emphasis"><em>A</em></span> may have touched. But if <span class="emphasis"><em>A</em></span> putting <span class="emphasis"><em>X</em></span> on a queue <span class="emphasis"><em>happens-before B</em></span> fetches <span class="emphasis"><em>X</em></span> from that queue, not only does <span class="emphasis"><em>B</em></span> see <span class="emphasis"><em>X</em></span> in the state that <span class="emphasis"><em>A</em></span> left it (assuming that <span class="emphasis"><em>X</em></span> has not been subsequently modified by <span class="emphasis"><em>A</em></span> or anyone else), but <span class="emphasis"><em>B</em></span> sees <span class="emphasis"><em>everything A</em></span> did before the handoff (again, subject to the same caveat).<sup>[<a id="ch16fn05" href="#ftn.ch16fn05" class="footnote">5</a>]</sup></p>
+<p>Why did we focus so heavily on <code class="literal">@GuardedBy</code> and safe publication, when the JMM already provides us with the more powerful <span class="emphasis"><em>happens-before</em></span>? Thinking in terms of handing off object ownership and publication fits better into most program designs than thinking in terms of visibility of individual memory writes. The <span class="emphasis"><em>happens-before</em></span> ordering operates at the level of individual memory accesses—it is a sort of “concurrency assembly language”. Safe publication operates at a level closer to that of your program’s design.</p>
+</div>
+<div class="section" title="Safe Initialization Idioms"><div class="titlepage"><div><div><h3 class="title"><a id="ch16lev2sec7"/>Safe Initialization Idioms</h3></div></div></div>
+
+<p>It sometimes makes sense to defer initialization of objects that are expensive to initialize until they are actually needed, but we have seen how the misuse of lazy initialization can lead to trouble. <code class="literal">UnsafeLazyInitialization</code> can be fixed by making the <code class="literal">getResource</code> method <code class="literal">synchronized</code>, as shown in <a class="link" href="ch16s02.html#ch16list04" title="Example 16.4. Thread-safe Lazy Initialization.">Listing 16.4</a>. Because the code path through <code class="literal">getInstance</code> is fairly short (a test and a predicted branch), if <code class="literal">getInstance</code> is not called frequently by many threads, there is little enough contention for the <code class="literal">SafeLazyInitialization</code> lock that this approach offers adequate performance.</p>
+<p>The treatment of static fields with initializers (or fields whose value is initialized in a static initialization block [JPL 2.2.1 and 2.5.3]) is somewhat special and <a id="iddle1990" class="indexterm"/><a id="iddle2696" class="indexterm"/><a id="iddle4440" class="indexterm"/>offers additional thread-safety guarantees. Static initializers are run by the JVM at class initialization time, after class loading but before the class is used by any thread. Because the JVM acquires a lock during initialization [JLS 12.4.2] and this lock is acquired by each thread at least once to ensure that the class has been loaded, memory writes made during static initialization are automatically visible to all threads. Thus statically initialized objects require no explicit synchronization either during construction or when being referenced. However, this applies only to the <span class="emphasis"><em>as-constructed</em></span> state—if the object is mutable, synchronization is still required by both readers and writers to make subsequent modifications visible and to avoid data corruption.</p>
+<div class="example"><a id="ch16list04"/><p class="title"><b>Example 16.4. Thread-safe Lazy Initialization.</b></p><div class="example-contents">
+
+<pre class="programlisting">@ThreadSafe
+public class SafeLazyInitialization {
+    private static Resource resource;
+
+    public  <span class="strong"><strong>synchronized</strong></span>  static Resource getInstance() {
+        if (resource == null)
+            resource = new Resource();
+        return resource;
+    }
+}
+</pre>
+</div></div><br class="example-break"/>
+<div class="example"><a id="ch16list05"/><p class="title"><b>Example 16.5. Eager Initialization.</b></p><div class="example-contents">
+
+<pre class="programlisting">@ThreadSafe
+public class EagerInitialization {
+    private static Resource resource  = <span class="strong"><strong>new Resource();</strong></span>
+
+    public static Resource getResource() { return resource; }
+}
+</pre>
+</div></div><br class="example-break"/>
+<p>Using eager initialization, shown in <a class="link" href="ch16s02.html#ch16list05" title="Example 16.5. Eager Initialization.">Listing 16.5</a>, eliminates the synchronization cost incurred on each call to <code class="literal">getInstance</code> in <code class="literal">SafeLazyInitialization</code>. This technique can be combined with the JVM’s lazy class loading to create a lazy initialization technique that does not require synchronization on the common code path. The <span class="emphasis"><em>lazy initialization holder class</em></span> idiom [EJ Item 48] in <a class="link" href="ch16s02.html#ch16list06" title="Example 16.6. Lazy Initialization Holder Class Idiom.">Listing 16.6</a> uses a class whose only purpose is to initialize the <code class="literal">Resource</code>. The JVM defers initializing the <code class="literal">ResourceHolder</code> class until it is actually used [JLS 12.4.1], and because the <code class="literal">Resource</code> is initialized with a static initializer, no additional synchronization is needed. The first call to <code class="literal">getResource</code> by any thread causes <code class="literal">ResourceHolder</code> to be loaded and initialized, at which time the initialization of the <code class="literal">Resource</code> happens through the static initializer.</p>
+
+<p/><div class="example"><a id="ch16list06"/><p class="title"><b>Example 16.6. Lazy Initialization Holder Class Idiom.</b></p><div class="example-contents">
+
+
+<pre class="programlisting">@ThreadSafe
+public class ResourceFactory {
+     private static class <span class="strong"><strong>ResourceHolder {</strong></span>
+         public static Resource resource = new Resource();
+     }
+
+     public static Resource getResource() {
+         return  <span class="strong"><strong>ResourceHolder.resource ;</strong></span>
+     }
+}
+</pre>
+</div></div><br class="example-break"/>
+</div>
+<div class="section" title="Double-checked Locking"><div class="titlepage"><div><div><h3 class="title"><a id="ch16lev2sec8"/>Double-checked Locking</h3></div></div></div>
+
+<p><a id="iddle1047" class="indexterm"/><a id="iddle1048" class="indexterm"/><a id="iddle1049" class="indexterm"/><a id="iddle1943" class="indexterm"/><a id="iddle1944" class="indexterm"/><a id="iddle1945" class="indexterm"/><a id="iddle1968" class="indexterm"/><a id="iddle2687" class="indexterm"/><a id="iddle2688" class="indexterm"/><a id="iddle2689" class="indexterm"/><a id="iddle2690" class="indexterm"/><a id="iddle2691" class="indexterm"/><a id="iddle2692" class="indexterm"/><a id="iddle2693" class="indexterm"/><a id="iddle2694" class="indexterm"/><a id="iddle2695" class="indexterm"/><a id="iddle2697" class="indexterm"/><a id="iddle2738" class="indexterm"/><a id="iddle2948" class="indexterm"/><a id="iddle3514" class="indexterm"/><a id="iddle3860" class="indexterm"/><a id="iddle3861" class="indexterm"/><a id="iddle3862" class="indexterm"/><a id="iddle3863" class="indexterm"/><a id="iddle4537" class="indexterm"/><a id="iddle4538" class="indexterm"/>No book on concurrency would be complete without a discussion of the infamous double-checked locking (DCL) antipattern, shown in <a class="link" href="ch16s02.html#ch16list07" title="Example 16.7. Double-checked-locking Antipattern. Don’t Do this.">Listing 16.7</a>. In very early JVMs, synchronization, even uncontended synchronization, had a significant performance cost. As a result, many clever (or at least clever-looking) tricks were invented to reduce the impact of synchronization—some good, some bad, and some ugly. DCL falls into the “ugly” category.</p>
+<p>Again, because the performance of early JVMs left something to be desired, lazy initialization was often used to avoid potentially unnecessary expensive operations or reduce application startup time. A properly written lazy initialization method requires synchronization. But at the time, synchronization was slow and, more importantly, not completely understood: the exclusion aspects were well enough understood, but the visibility aspects were not.</p>
+<p>DCL purported to offer the best of both worlds—lazy initialization without paying the synchronization penalty on the common code path. The way it worked was first to check whether initialization was needed without synchronizing, and if the <code class="literal">resource</code> reference was not <code class="literal">null</code>, use it. Otherwise, synchronize and check again if the <code class="literal">Resource</code> is initialized, ensuring that only one thread actually initializes the shared <code class="literal">Resource</code>. The common code path—fetching a reference to an already constructed <code class="literal">Resource</code>—doesn’t use synchronization. And that’s where the problem is: as described in <a class="link" href="ch16s02.html#ch16lev2sec5" title="Unsafe Publication">Section 16.2.1</a>, it is possible for a thread to see a partially constructed <code class="literal">Resource</code>.</p>
+<p>The real problem with DCL is the assumption that the worst thing that can happen when reading a shared object reference without synchronization is to erroneously see a stale value (in this case, <code class="literal">null</code>); in that case the DCL idiom compensates for this risk by trying again with the lock held. But the worst case is actually considerably worse—it is possible to see a current value of the reference but stale values for the object’s state, meaning that the object could be seen to be in an invalid or incorrect state.</p>
+<p>Subsequent changes in the JMM (Java 5.0 and later) have enabled DCL to work <span class="emphasis"><em>if</em></span> <code class="literal">resource</code> is made <code class="literal">volatile</code>, and the performance impact of this is small since volatile reads are usually only slightly more expensive than nonvolatile reads. <a id="iddle1969" class="indexterm"/><a id="iddle2112" class="indexterm"/><a id="iddle2535" class="indexterm"/><a id="iddle2744" class="indexterm"/><a id="iddle4036" class="indexterm"/>However, this is an idiom whose utility has largely passed—the forces that motivated it (slow uncontended synchronization, slow JVM startup) are no longer in play, making it less effective as an optimization. The lazy initialization holder idiom offers the same benefits and is easier to understand.</p>
+<div class="example"><a id="ch16list07"/><p class="title"><b>Example 16.7. Double-checked-locking Antipattern. <span class="emphasis"><em>Don’t Do this.</em></span></b></p><div class="example-contents">
+
+<div class="mediaobject"><img src="graphics/face.jpg" width="52" alt="Double-checked-locking Antipattern. Don’t Do this."/></div>
+<pre class="programlisting">@NotThreadSafe
+public class DoubleCheckedLocking {
+    private static Resource resource;
+
+    public static Resource getInstance() {
+        if (resource == null) {
+            synchronized (DoubleCheckedLocking.class) {
+                if (resource == null)
+                    resource = new Resource();
+            }
+        }
+        return resource;
+    }
+}
+</pre>
+</div></div><br class="example-break"/>
+</div>
+<div class="footnotes"><br/><hr/><div class="footnote"><p><sup>[<a id="ftn.ch16fn05" href="#ch16fn05" class="para">5</a>] </sup>The JMMguarantees that <span class="emphasis"><em>B</em></span> sees a value at least as up-to-date as the value that <span class="emphasis"><em>A</em></span> wrote; subsequent writes may or may not be visible.</p></div></div></div></body></html>

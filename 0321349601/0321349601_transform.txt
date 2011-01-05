@@ -1,0 +1,134 @@
+Note: namesp. add : added namespace before processing              Java Concurrency in Practice
+Writing OEBPS/pr01.html for preface(copyrightp1g)
+Writing OEBPS/pr02.html for preface(pref01)
+Writing OEBPS/pr03.html for preface(pref02)
+Writing OEBPS/pr04s02.html for section(pref03lev1sec2)
+Writing OEBPS/pr04s03.html for section(pref03lev1sec3)
+Writing OEBPS/pr04.html for preface(pref03)
+Writing OEBPS/ch01s02.html for section(ch01lev1sec2)
+Writing OEBPS/ch01s03.html for section(ch01lev1sec3)
+Writing OEBPS/ch01s04.html for section(ch01lev1sec4)
+Writing OEBPS/ch01.html for chapter(ch01)
+Writing OEBPS/ch02s02.html for section(ch02lev1sec2)
+Writing OEBPS/ch02s03.html for section(ch02lev1sec3)
+Writing OEBPS/ch02s04.html for section(ch02lev1sec4)
+Writing OEBPS/ch02s05.html for section(ch02lev1sec5)
+Writing OEBPS/ch02.html for chapter(ch02)
+Writing OEBPS/ch03s02.html for section(ch03lev1sec2)
+Writing OEBPS/ch03s03.html for section(ch03lev1sec3)
+Writing OEBPS/ch03s04.html for section(ch03lev1sec4)
+Writing OEBPS/ch03s05.html for section(ch03lev1sec5)
+Writing OEBPS/ch03.html for chapter(ch03)
+Writing OEBPS/ch04s02.html for section(ch04lev1sec2)
+Writing OEBPS/ch04s03.html for section(ch04lev1sec3)
+Writing OEBPS/ch04s04.html for section(ch04lev1sec4)
+Writing OEBPS/ch04s05.html for section(ch04lev1sec5)
+Writing OEBPS/ch04.html for chapter(ch04)
+Writing OEBPS/ch05s02.html for section(ch05lev1sec2)
+Writing OEBPS/ch05s03.html for section(ch05lev1sec3)
+Writing OEBPS/ch05s04.html for section(ch05lev1sec4)
+Writing OEBPS/ch05s05.html for section(ch05lev1sec5)
+Writing OEBPS/ch05s06.html for section(ch05lev1sec6)
+Writing OEBPS/ch05s07.html for section(ch05lev1sec7)
+Writing OEBPS/ch05.html for chapter(ch05)
+Writing OEBPS/pt01.html for part(part01)
+Writing OEBPS/ch06s02.html for section(ch06lev1sec2)
+Writing OEBPS/ch06s03.html for section(ch06lev1sec3)
+Writing OEBPS/ch06s04.html for section(ch06lev1sec4)
+Writing OEBPS/ch06.html for chapter(ch06)
+Writing OEBPS/ch07s02.html for section(ch07lev1sec2)
+Writing OEBPS/ch07s03.html for section(ch07lev1sec3)
+Writing OEBPS/ch07s04.html for section(ch07lev1sec4)
+Writing OEBPS/ch07s05.html for section(ch07lev1sec5)
+Writing OEBPS/ch07.html for chapter(ch07)
+Writing OEBPS/ch08s02.html for section(ch08lev1sec2)
+Writing OEBPS/ch08s03.html for section(ch08lev1sec3)
+Writing OEBPS/ch08s04.html for section(ch08lev1sec4)
+Writing OEBPS/ch08s05.html for section(ch08lev1sec5)
+Writing OEBPS/ch08s06.html for section(ch08lev1sec6)
+Writing OEBPS/ch08.html for chapter(ch08)
+Writing OEBPS/ch09s02.html for section(ch09lev1sec2)
+Writing OEBPS/ch09s03.html for section(ch09lev1sec3)
+Writing OEBPS/ch09s04.html for section(ch09lev1sec4)
+Writing OEBPS/ch09s05.html for section(ch09lev1sec5)
+Writing OEBPS/ch09s06.html for section(ch09lev1sec6)
+Writing OEBPS/ch09.html for chapter(ch09)
+Writing OEBPS/pt02.html for part(part02)
+Writing OEBPS/ch10s02.html for section(ch10lev1sec2)
+Writing OEBPS/ch10s03.html for section(ch10lev1sec3)
+Writing OEBPS/ch10s04.html for section(ch10lev1sec4)
+Writing OEBPS/ch10.html for chapter(ch10)
+Writing OEBPS/ch11s02.html for section(ch11lev1sec2)
+Writing OEBPS/ch11s03.html for section(ch11lev1sec3)
+Writing OEBPS/ch11s04.html for section(ch11lev1sec4)
+Writing OEBPS/ch11s05.html for section(ch11lev1sec5)
+Writing OEBPS/ch11s06.html for section(ch11lev1sec6)
+Writing OEBPS/ch11s07.html for section(ch11lev1sec7)
+Writing OEBPS/ch11.html for chapter(ch11)
+Writing OEBPS/ch12s02.html for section(ch12lev1sec2)
+Writing OEBPS/ch12s03.html for section(ch12lev1sec3)
+Writing OEBPS/ch12s04.html for section(ch12lev1sec4)
+Writing OEBPS/ch12s05.html for section(ch12lev1sec5)
+Writing OEBPS/ch12.html for chapter(ch12)
+Writing OEBPS/pt03.html for part(part03)
+Writing OEBPS/ch13s02.html for section(ch13lev1sec2)
+Writing OEBPS/ch13s03.html for section(ch13lev1sec3)
+Writing OEBPS/ch13s04.html for section(ch13lev1sec4)
+Writing OEBPS/ch13s05.html for section(ch13lev1sec5)
+Writing OEBPS/ch13s06.html for section(ch13lev1sec6)
+Writing OEBPS/ch13.html for chapter(ch13)
+Writing OEBPS/ch14s02.html for section(ch14lev1sec2)
+Writing OEBPS/ch14s03.html for section(ch14lev1sec3)
+Writing OEBPS/ch14s04.html for section(ch14lev1sec4)
+Writing OEBPS/ch14s05.html for section(ch14lev1sec5)
+Writing OEBPS/ch14s06.html for section(ch14lev1sec6)
+Writing OEBPS/ch14s07.html for section(ch14lev1sec7)
+Writing OEBPS/ch14.html for chapter(ch14)
+Writing OEBPS/ch15s02.html for section(ch15lev1sec2)
+Writing OEBPS/ch15s03.html for section(ch15lev1sec3)
+Writing OEBPS/ch15s04.html for section(ch15lev1sec4)
+Writing OEBPS/ch15s05.html for section(ch15lev1sec5)
+Writing OEBPS/ch15.html for chapter(ch15)
+Writing OEBPS/ch16s02.html for section(ch16lev1sec2)
+Writing OEBPS/ch16s03.html for section(ch16lev1sec3)
+Writing OEBPS/ch16s04.html for section(ch16lev1sec4)
+Writing OEBPS/ch16.html for chapter(ch16)
+Writing OEBPS/apas02.html for section(app01lev1sec2)
+Writing OEBPS/apa.html for appendix(app01)
+Element year in namespace 'http://docbook.org/ns/docbook' encountered in copyright, but no template matches.
+Element year in namespace 'http://docbook.org/ns/docbook' encountered in copyright, but no template matches.
+Element year in namespace 'http://docbook.org/ns/docbook' encountered in copyright, but no template matches.
+Element year in namespace 'http://docbook.org/ns/docbook' encountered in copyright, but no template matches.
+Element year in namespace 'http://docbook.org/ns/docbook' encountered in copyright, but no template matches.
+Element year in namespace 'http://docbook.org/ns/docbook' encountered in copyright, but no template matches.
+Element year in namespace 'http://docbook.org/ns/docbook' encountered in copyright, but no template matches.
+Element year in namespace 'http://docbook.org/ns/docbook' encountered in copyright, but no template matches.
+Element year in namespace 'http://docbook.org/ns/docbook' encountered in copyright, but no template matches.
+Element year in namespace 'http://docbook.org/ns/docbook' encountered in copyright, but no template matches.
+Element year in namespace 'http://docbook.org/ns/docbook' encountered in copyright, but no template matches.
+Element year in namespace 'http://docbook.org/ns/docbook' encountered in copyright, but no template matches.
+Element year in namespace 'http://docbook.org/ns/docbook' encountered in copyright, but no template matches.
+Element year in namespace 'http://docbook.org/ns/docbook' encountered in copyright, but no template matches.
+Element year in namespace 'http://docbook.org/ns/docbook' encountered in copyright, but no template matches.
+Element year in namespace 'http://docbook.org/ns/docbook' encountered in copyright, but no template matches.
+Element year in namespace 'http://docbook.org/ns/docbook' encountered in copyright, but no template matches.
+Element year in namespace 'http://docbook.org/ns/docbook' encountered in copyright, but no template matches.
+Element year in namespace 'http://docbook.org/ns/docbook' encountered in copyright, but no template matches.
+Element year in namespace 'http://docbook.org/ns/docbook' encountered in copyright, but no template matches.
+Element year in namespace 'http://docbook.org/ns/docbook' encountered in copyright, but no template matches.
+Element year in namespace 'http://docbook.org/ns/docbook' encountered in copyright, but no template matches.
+Element year in namespace 'http://docbook.org/ns/docbook' encountered in copyright, but no template matches.
+Element year in namespace 'http://docbook.org/ns/docbook' encountered in copyright, but no template matches.
+Element year in namespace 'http://docbook.org/ns/docbook' encountered in copyright, but no template matches.
+Element year in namespace 'http://docbook.org/ns/docbook' encountered in copyright, but no template matches.
+Element year in namespace 'http://docbook.org/ns/docbook' encountered in copyright, but no template matches.
+Element year in namespace 'http://docbook.org/ns/docbook' encountered in copyright, but no template matches.
+Element year in namespace 'http://docbook.org/ns/docbook' encountered in copyright, but no template matches.
+Writing OEBPS/bi01.html for bibliography(bib01)
+Writing OEBPS/pt04.html for part(part04)
+Writing OEBPS/ix01.html for index
+Writing OEBPS/index.html for book
+Writing OEBPS/toc.ncx
+Writing OEBPS/content.opf
+Writing OEBPS/cover.html for mediaobject
+Writing META-INF/container.xml

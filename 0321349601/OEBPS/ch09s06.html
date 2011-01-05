@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN" "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml"><head><title>Summary</title><link rel="stylesheet" href="styles/convert.css" type="text/css"/></head><body><div class="section" title="Summary"><div class="titlepage"><div><div><h2 class="title"><a id="ch09lev1sec6"/>Summary</h2></div></div></div>
+
+<p>GUI frameworks are nearly always implemented as single-threaded subsystems in which all presentation-related code runs as tasks in an event thread. Because there is only a single event thread, long-running tasks can compromise responsiveness and so should be executed in background threads. Helper classes like <code class="literal">SwingWorker</code> or the <code class="literal">BackgroundTask</code> class built here, which provide support for cancellation, progress indication, and completion indication, can simplify the development of long-running tasks that have both GUI and non-GUI components.</p>
+</div></body></html>

@@ -1,0 +1,269 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN" "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml"><head><title>Delegating Thread Safety</title><link rel="stylesheet" href="styles/convert.css" type="text/css"/></head><body><div class="section" title="Delegating Thread Safety"><div class="titlepage"><div><div><h2 class="title"><a id="ch04lev1sec3"/>Delegating Thread Safety</h2></div></div></div>
+
+<p>All but the most trivial objects are composite objects. The Java monitor pattern is useful when building classes from scratch or composing classes out of objects that are not thread-safe. But what if the components of our class are already thread-safe? Do we need to add an additional layer of thread safety? The answer is . . . “it depends”. In some cases a composite made of thread-safe components is thread-safe (<a class="link" href="ch04s03.html#ch04list07" title="Example 4.7. Delegating Thread Safety to a ConcurrentHashMap.">Listings 4.7</a> and <a class="link" href="ch04s03.html#ch04list09" title="Example 4.9. Delegating Thread Safety to Multiple Underlying State Variables.">4.9</a>), and in others it is merely a good start (<a class="link" href="ch04s03.html#ch04list10" title="Example 4.10. Number Range Class that does Not Sufficiently Protect Its Invariants. Don’t Do this.">4.10</a>).</p>
+<p>In <code class="literal">CountingFactorizer</code> on page 23, we added an <code class="literal">AtomicLong</code> to an otherwise stateless object, and the resulting composite object was still thread-safe. Since the state of <code class="literal">CountingFactorizer</code> <span class="emphasis"><em>is</em></span> the state of the thread-safe <code class="literal">AtomicLong</code>, and since <code class="literal">CountingFactorizer</code> imposes no additional validity constraints on the state of the <a id="iddle2139" class="indexterm"/><a id="iddle2141" class="indexterm"/><a id="iddle2154" class="indexterm"/><a id="iddle4461" class="indexterm"/><a id="iddle4462" class="indexterm"/><a id="iddle5078" class="indexterm"/><a id="iddle5079" class="indexterm"/>counter, it is easy to see that <code class="literal">CountingFactorizer</code> is thread-safe. We could say that <code class="literal">CountingFactorizer</code> <span class="emphasis"><em>delegates</em></span> its thread safety responsibilities to the <code class="literal">AtomicLong</code>: <code class="literal">CountingFactorizer</code> is thread-safe because <code class="literal">AtomicLong</code> is.<sup>[<a id="ch04fn05" href="#ftn.ch04fn05" class="footnote">5</a>]</sup></p>
+<div class="example"><a id="ch04list04"/><p class="title"><b>Example 4.4. Monitor-based Vehicle Tracker Implementation.</b></p><div class="example-contents">
+
+
+<pre class="programlisting">@ThreadSafe
+public class MonitorVehicleTracker {
+    @GuardedBy("this")
+    private final Map&lt;String, MutablePoint&gt; locations;
+
+    public MonitorVehicleTracker(
+            Map&lt;String, MutablePoint&gt; locations) {
+        this.locations = deepCopy(locations);
+    }
+
+    public <span class="strong"><strong>synchronized</strong></span> Map&lt;String, MutablePoint&gt; getLocations() {
+        return deepCopy(locations);
+    }
+
+    public <span class="strong"><strong>synchronized</strong></span>  MutablePoint getLocation(String id) {
+        MutablePoint loc = locations.get(id);
+        return loc == null ? null : new MutablePoint(loc);
+    }
+
+    public <span class="strong"><strong>synchronized</strong></span>  void setLocation(String id, int x, int y) {
+        MutablePoint loc = locations.get(id);
+        if (loc == null)
+            throw new IllegalArgumentException("No such ID: " + id);
+        loc.x = x;
+        loc.y = y;
+    }
+
+    private static Map&lt;String, MutablePoint&gt; deepCopy(
+            Map&lt;String, MutablePoint&gt; m) {
+        Map&lt;String, MutablePoint&gt; result =
+                new HashMap&lt;String, MutablePoint&gt;();
+        for (String id : m.keySet())
+            result.put(id, new MutablePoint(m.get(id)));
+        return Collections.unmodifiableMap(result);
+    }
+}
+
+public class MutablePoint { <span class="emphasis"><em>/*  Listing 4.5  */</em></span> }
+</pre>
+</div></div><br class="example-break"/>
+<div class="example"><a id="ch04list05"/><p class="title"><b>Example 4.5. Mutable Point Class Similar to <code class="literal">Java.awt.Point</code>.</b></p><div class="example-contents">
+
+<div class="mediaobject"><img src="graphics/face1.jpg" width="45" alt="Mutable Point Class Similar to Java.awt.Point."/></div>
+<pre class="programlisting">@NotThreadSafe
+public class MutablePoint {
+    public int x, y;
+
+    public MutablePoint() { x = 0; y = 0; }
+    public MutablePoint(MutablePoint p) {
+        this.x = p.x;
+        this.y = p.y;
+    }
+}
+</pre>
+</div></div><br class="example-break"/>
+<div class="section" title="Example: Vehicle Tracker Using Delegation"><div class="titlepage"><div><div><h3 class="title"><a id="ch04lev2sec6"/>Example: Vehicle Tracker Using Delegation</h3></div></div></div>
+
+<p>As a more substantial example of delegation, let’s construct a version of the vehicle tracker that delegates to a thread-safe class. We store the locations in a <code class="literal">Map</code>, so we start with a thread-safe <code class="literal">Map</code> implementation, <code class="literal">ConcurrentHashMap</code>. We also store the location using an immutable <code class="literal">Point</code> class instead of <code class="literal">MutablePoint</code>, shown in <a class="link" href="ch04s03.html#ch04list06" title="Example 4.6. Immutable Point class used by DelegatingVehicleTracker.">Listing 4.6</a>.</p>
+<div class="example"><a id="ch04list06"/><p class="title"><b>Example 4.6. Immutable <code class="literal">Point</code> class used by <code class="literal">DelegatingVehicleTracker</code>.</b></p><div class="example-contents">
+
+<pre class="programlisting">@Immutable
+public class Point {
+    public final int x, y;
+
+    public Point(int x, int y) {
+        this.x = x;
+        this.y = y;
+    }
+}
+</pre>
+</div></div><br class="example-break"/>
+<p><code class="literal">Point</code> is thread-safe because it is immutable. Immutable values can be freely shared and published, so we no longer need to copy the locations when returning them.</p>
+<p><a id="iddle2107" class="indexterm"/><code class="literal">DelegatingVehicleTracker</code> in <a class="link" href="ch04s03.html#ch04list07" title="Example 4.7. Delegating Thread Safety to a ConcurrentHashMap.">Listing 4.7</a> does not use any explicit synchronization; all access to state is managed by <code class="literal">ConcurrentHashMap</code>, and all the keys and values of the <code class="literal">Map</code> are immutable.</p>
+<div class="example"><a id="ch04list07"/><p class="title"><b>Example 4.7. Delegating Thread Safety to a <code class="literal">ConcurrentHashMap</code>.</b></p><div class="example-contents">
+
+<pre class="programlisting">@ThreadSafe
+public class DelegatingVehicleTracker {
+    private <span class="strong"><strong>final</strong></span> ConcurrentMap&lt;String, Point&gt; locations;
+    private <span class="strong"><strong>final</strong></span> Map&lt;String, Point&gt; unmodifiableMap;
+
+    public DelegatingVehicleTracker(Map&lt;String, Point&gt; points) {
+        locations = new <span class="strong"><strong>ConcurrentHashMap</strong></span>&lt;String, Point&gt;(points);
+        unmodifiableMap = <span class="strong"><strong>Collections.unmodifiableMap</strong></span>(locations);
+    }
+
+    public Map&lt;String, Point&gt; getLocations() {
+        return unmodifiableMap;
+    }
+
+    public Point getLocation(String id) {
+        return locations.get(id);
+    }
+
+    public void setLocation(String id, int x, int y) {
+        if (locations.replace(id, new Point(x, y)) == null)
+            throw new IllegalArgumentException(
+                "invalid vehicle name: " + id);
+    }
+}
+</pre>
+</div></div><br class="example-break"/>
+<p>If we had used the original <code class="literal">MutablePoint</code> class instead of <code class="literal">Point</code>, we would be breaking encapsulation by letting <code class="literal">getLocations</code> publish a reference to mutable state that is not thread-safe. Notice that we’ve changed the behavior of the vehicle tracker class slightly; while the monitor version returned a snapshot of the locations, the delegating version returns an unmodifiable but “live” view of the vehicle locations. This means that if thread <span class="emphasis"><em>A</em></span> calls <code class="literal">getLocations</code> and thread <span class="emphasis"><em>B</em></span> later modifies the location of some of the points, those changes are reflected in the <code class="literal">Map</code> returned to thread <span class="emphasis"><em>A</em></span>. As we remarked earlier, this can be a benefit (more up-to-date data) or a liability (potentially inconsistent view of the fleet), depending on your requirements.</p>
+<p>If an unchanging view of the fleet is required, <code class="literal">getLocations</code> could instead return a shallow copy of the <code class="literal">locations</code> map. Since the contents of the <code class="literal">Map</code> are immutable, only the structure of the <code class="literal">Map</code>, not the contents, must be copied, as shown in <a class="link" href="ch04s03.html#ch04list08" title="Example 4.8. Returning a Static Copy of the Location Set Instead of a “Live” One.">Listing 4.8</a> (which returns a plain <code class="literal">HashMap</code>, since <code class="literal">getLocations</code> did not promise to return a thread-safe <code class="literal">Map</code>).</p>
+
+<p/><div class="example"><a id="ch04list08"/><p class="title"><b>Example 4.8. Returning a Static Copy of the Location Set Instead of a “Live” One.</b></p><div class="example-contents">
+
+
+<pre class="programlisting">public Map&lt;String, Point&gt; getLocations() {
+    return Collections.unmodifiableMap(
+            new HashMap&lt;String, Point&gt;(locations));
+}
+</pre>
+</div></div><br class="example-break"/>
+</div>
+<div class="section" title="Independent State Variables"><div class="titlepage"><div><div><h3 class="title"><a id="ch04lev2sec7"/>Independent State Variables</h3></div></div></div>
+
+<p><a id="iddle1553" class="indexterm"/><a id="iddle1554" class="indexterm"/><a id="iddle1941" class="indexterm"/><a id="iddle2215" class="indexterm"/><a id="iddle2728" class="indexterm"/><a id="iddle2729" class="indexterm"/><a id="iddle2852" class="indexterm"/><a id="iddle3886" class="indexterm"/><a id="iddle4432" class="indexterm"/><a id="iddle4433" class="indexterm"/><a id="iddle5057" class="indexterm"/><a id="iddle5058" class="indexterm"/><a id="iddle5092" class="indexterm"/>The delegation examples so far delegate to a single, thread-safe state variable. We can also delegate thread safety to more than one underlying state variable as long as those underlying state variables are <span class="emphasis"><em>independent</em></span>, meaning that the composite class does not impose any invariants involving the multiple state variables.</p>
+<p><code class="literal">VisualComponent</code> in <a class="link" href="ch04s03.html#ch04list09" title="Example 4.9. Delegating Thread Safety to Multiple Underlying State Variables.">Listing 4.9</a> is a graphical component that allows clients to register listeners for mouse and keystroke events. It maintains a list of registered listeners of each type, so that when an event occurs the appropriate listeners can be invoked. But there is no relationship between the set of mouse listeners and key listeners; the two are independent, and therefore <code class="literal">VisualComponent</code> can delegate its thread safety obligations to two underlying thread-safe lists.</p>
+<div class="example"><a id="ch04list09"/><p class="title"><b>Example 4.9. Delegating Thread Safety to Multiple Underlying State Variables.</b></p><div class="example-contents">
+
+<pre class="programlisting">public class VisualComponent {
+    private final List&lt;KeyListener&gt; keyListeners
+        = new CopyOnWriteArrayList&lt;KeyListener&gt;();
+    private final List&lt;MouseListener&gt; mouseListeners
+        = new CopyOnWriteArrayList&lt;MouseListener&gt;();
+
+    public void addKeyListener(KeyListener listener) {
+        keyListeners.add(listener);
+    }
+
+    public void addMouseListener(MouseListener listener) {
+        mouseListeners.add(listener);
+    }
+
+    public void removeKeyListener(KeyListener listener) {
+        keyListeners.remove(listener);
+    }
+
+    public void removeMouseListener(MouseListener listener) {
+        mouseListeners.remove(listener);
+    }
+}
+</pre>
+</div></div><br class="example-break"/>
+<p><code class="literal">VisualComponent</code> uses a <code class="literal">CopyOnWriteArrayList</code> to store each listener list; this <a id="iddle1151" class="indexterm"/><a id="iddle1335" class="indexterm"/><a id="iddle1862" class="indexterm"/><a id="iddle2147" class="indexterm"/><a id="iddle2856" class="indexterm"/><a id="iddle3274" class="indexterm"/>is a thread-safe <code class="literal">List</code> implementation particularly suited for managing listener lists (see <a class="link" href="ch05s02.html#ch05lev2sec6" title="CopyOnWriteArrayList">Section 5.2.3</a>). Each <code class="literal">List</code> is thread-safe, and because there are no constraints coupling the state of one to the state of the other, <code class="literal">VisualComponent</code> can delegate its thread safety responsibilities to the underlying <code class="literal">mouseListeners</code> and <code class="literal">keyListeners</code> objects.</p>
+</div>
+<div class="section" title="When Delegation Fails"><div class="titlepage"><div><div><h3 class="title"><a id="ch04lev2sec8"/>When Delegation Fails</h3></div></div></div>
+
+<p>Most composite classes are not as simple as <code class="literal">VisualComponent</code>: they have invariants that relate their component state variables. <code class="literal">NumberRange</code> in <a class="link" href="ch04s03.html#ch04list10" title="Example 4.10. Number Range Class that does Not Sufficiently Protect Its Invariants. Don’t Do this.">Listing 4.10</a> uses two <code class="literal">AtomicInteger</code>s to manage its state, but imposes an additional constraint—that the first number be less than or equal to the second.</p>
+<div class="example"><a id="ch04list10"/><p class="title"><b>Example 4.10. Number Range Class that does Not Sufficiently Protect Its Invariants. <span class="emphasis"><em>Don’t Do this.</em></span></b></p><div class="example-contents">
+
+<div class="mediaobject"><img src="graphics/face.jpg" width="52" alt="Number Range Class that does Not Sufficiently Protect Its Invariants. Don’t Do this."/></div>
+<pre class="programlisting">public class NumberRange {
+    // <span class="emphasis"><em>INVARIANT: lower &lt;= upper</em></span>
+    private final AtomicInteger lower = new AtomicInteger(0);
+    private final AtomicInteger upper = new AtomicInteger(0);
+
+    public void setLower(int i) {
+        // <span class="emphasis"><em>Warning -- unsafe check-then-act</em></span>
+        if (i &gt; upper.get())
+            throw new IllegalArgumentException(
+                    "can't set lower to " + i + " &gt; upper");
+        lower.set(i);
+    }
+
+    public void setUpper(int i) {
+        // <span class="emphasis"><em>Warning -- unsafe check-then-act</em></span>
+        if (i &lt; lower.get())
+            throw new IllegalArgumentException(
+                    "can't set upper to " + i + " &lt; lower");
+        upper.set(i);
+    }
+
+    public boolean isInRange(int i) {
+        return (i &gt;= lower.get() &amp;&amp; i &lt;= upper.get());
+    }
+}
+</pre>
+</div></div><br class="example-break"/>
+<p><code class="literal">NumberRange</code> is not thread-safe; it does not preserve the invariant that constrains <code class="literal">lower</code> and <code class="literal">upper</code>. The <code class="literal">setLower</code> and <code class="literal">setUpper</code> methods <span class="emphasis"><em>attempt</em></span> to respect this invariant, but do so poorly. Both <code class="literal">setLower</code> and <code class="literal">setUpper</code> are check-then-act sequences, but they do not use sufficient locking to make them atomic. If the number range holds (0, 10), and one thread calls <code class="literal">setLower(5)</code> while another thread <a id="iddle2590" class="indexterm"/><a id="iddle2844" class="indexterm"/><a id="iddle3733" class="indexterm"/><a id="iddle3734" class="indexterm"/><a id="iddle4435" class="indexterm"/><a id="iddle5061" class="indexterm"/><a id="iddle5068" class="indexterm"/><a id="iddle5127" class="indexterm"/>calls <code class="literal">setUpper(4)</code>, with some unlucky timing both will pass the checks in the setters and both modifications will be applied. The result is that the range now holds (5, 4)—an invalid state. So while the underlying <code class="literal">AtomicInteger</code>s are thread-safe, the composite class is not. Because the underlying state variables <code class="literal">lower</code> and <code class="literal">upper</code> are not independent, <code class="literal">NumberRange</code> cannot simply delegate thread safety to its thread-safe state variables.</p>
+<p><code class="literal">NumberRange</code> could be made thread-safe by using locking to maintain its invariants, such as guarding <code class="literal">lower</code> and <code class="literal">upper</code> with a common lock. It must also avoid publishing <code class="literal">lower</code> and <code class="literal">upper</code> to prevent clients from subverting its invariants.</p>
+<p>If a class has compound actions, as <code class="literal">NumberRange</code> does, delegation alone is again not a suitable approach for thread safety. In these cases, the class must provide its own locking to ensure that compound actions are atomic, unless the entire compound action can also be delegated to the underlying state variables.</p>
+<div class="sidebar"><a id="ch04sb05"/><p class="title"><b/></p>
+<p>If a class is composed of multiple <span class="emphasis"><em>independent</em></span> thread-safe state variables and has no operations that have any invalid state transitions, then it can delegate thread safety to the underlying state variables.</p>
+</div>
+<p>The problem that prevented <code class="literal">NumberRange</code> from being thread-safe even though its state components were thread-safe is very similar to one of the rules about volatile variables described in <a class="link" href="ch03.html#ch03lev2sec4" title="Volatile Variables">Section 3.1.4</a>: a variable is suitable for being declared <code class="literal">volatile</code> only if it does not participate in invariants involving other state variables.</p>
+</div>
+<div class="section" title="Publishing Underlying State Variables"><div class="titlepage"><div><div><h3 class="title"><a id="ch04lev2sec9"/>Publishing Underlying State Variables</h3></div></div></div>
+
+<p>When you delegate thread safety to an object’s underlying state variables, under what conditions can you publish those variables so that other classes can modify them as well? Again, the answer depends on what invariants your class imposes on those variables. While the underlying <code class="literal">value</code> field in <code class="literal">Counter</code> could take on any integer value, <code class="literal">Counter</code> constrains it to take on only positive values, and the increment operation constrains the set of valid next states given any current state. If you were to make the <code class="literal">value</code> field public, clients could change it to an invalid value, so publishing it would render the class incorrect. On the other hand, if a variable represents the current temperature or the ID of the last user to log on, then having another class modify this value at any time probably would not violate any invariants, so publishing this variable might be acceptable. (It still may not be a good idea, since publishing mutable variables constrains future development and opportunities for subclassing, but it would not <span class="emphasis"><em>necessarily</em></span> render the class not thread-safe.)</p>
+<div class="sidebar"><a id="ch04sb06"/><p class="title"><b/></p>
+<p>If a state variable is thread-safe, does not participate in any invariants that constrain its value, and has no prohibited state transitions for any of its operations, then it can safely be published.</p>
+</div>
+<p>For example, it would be safe to publish <code class="literal">mouseListeners</code> or <code class="literal">keyListeners</code> in <code class="literal">VisualComponent</code>. Because <code class="literal">VisualComponent</code> does not impose any constraints on the valid states of its listener lists, these fields could be made public or otherwise published without compromising thread safety.</p>
+</div>
+<div class="section" title="Example: Vehicle Tracker that Publishes Its State"><div class="titlepage"><div><div><h3 class="title"><a id="ch04lev2sec10"/>Example: Vehicle Tracker that Publishes Its State</h3></div></div></div>
+
+<p>Let’s construct another version of the vehicle tracker that publishes its underlying mutable state. Again, we need to modify the interface a little bit to accommodate this change, this time using mutable but thread-safe points.</p>
+<div class="example"><a id="ch04list11"/><p class="title"><b>Example 4.11. Thread-safe Mutable Point Class.</b></p><div class="example-contents">
+
+<pre class="programlisting">@ThreadSafe
+public class SafePoint {
+    @GuardedBy("this") private int x, y;
+
+    private SafePoint(int[] a) { this(a[0], a[1]); }
+
+    public SafePoint(SafePoint p) { this(p.get()); }
+
+    public SafePoint(int x, int y) {
+        this.x = x;
+        this.y = y;
+    }
+
+    public synchronized int[] get() {
+        return new int[] { x, y };
+    }
+
+    public synchronized void set(int x, int y) {
+        this.x = x;
+        this.y = y;
+    }
+}
+</pre>
+</div></div><br class="example-break"/>
+<p><code class="literal">SafePoint</code> in <a class="link" href="ch04s03.html#ch04list11" title="Example 4.11. Thread-safe Mutable Point Class.">Listing 4.11</a> provides a getter that retrieves both the <span class="emphasis"><em>x</em></span> and <span class="emphasis"><em>y</em></span> values at once by returning a two-element array.<sup>[<a id="ch04fn06" href="#ftn.ch04fn06" class="footnote">6</a>]</sup> If we provided separate getters <a id="iddle1206" class="indexterm"/><a id="iddle1207" class="indexterm"/><a id="iddle1571" class="indexterm"/><a id="iddle2171" class="indexterm"/><a id="iddle2698" class="indexterm"/><a id="iddle3666" class="indexterm"/><a id="iddle3667" class="indexterm"/><a id="iddle4961" class="indexterm"/><a id="iddle5081" class="indexterm"/><a id="iddle1555" class="indexterm"/><a id="iddle1942" class="indexterm"/><a id="iddle5093" class="indexterm"/>for <span class="emphasis"><em>x</em></span> and <span class="emphasis"><em>y</em></span>, then the values could change between the time one coordinate is retrieved and the other, resulting in a caller seeing an inconsistent value: an (<span class="emphasis"><em>x</em></span>, <span class="emphasis"><em>y</em></span>) location where the vehicle never was. Using <code class="literal">SafePoint</code>, we can construct a vehicle tracker that publishes the underlying mutable state without undermining thread safety, as shown in the <code class="literal">PublishingVehicleTracker</code> class in <a class="link" href="ch04s03.html#ch04list12" title="Example 4.12. Vehicle Tracker that Safely Publishes Underlying State.">Listing 4.12</a>.</p>
+<div class="example"><a id="ch04list12"/><p class="title"><b>Example 4.12. Vehicle Tracker that Safely Publishes Underlying State.</b></p><div class="example-contents">
+
+<pre class="programlisting">@ThreadSafe
+public class PublishingVehicleTracker {
+    private final Map&lt;String, SafePoint&gt; locations;
+    private final Map&lt;String, SafePoint&gt; unmodifiableMap;
+
+    public PublishingVehicleTracker(
+                            Map&lt;String, SafePoint&gt; locations) {
+        this.locations
+            = new ConcurrentHashMap&lt;String, SafePoint&gt;(locations);
+        this.unmodifiableMap
+            = Collections.unmodifiableMap(this.locations);
+    }
+
+    public Map&lt;String, SafePoint&gt; getLocations() {
+        return unmodifiableMap;
+    }
+
+    public SafePoint getLocation(String id) {
+        return locations.get(id);
+    }
+
+    public void setLocation(String id, int x, int y) {
+        if (!locations.containsKey(id))
+            throw new IllegalArgumentException(
+                "invalid vehicle name: " + id);
+        locations.get(id).set(x, y);
+      }
+}
+</pre>
+</div></div><br class="example-break"/>
+<p><code class="literal">PublishingVehicleTracker</code> derives its thread safety from delegation to an underlying <code class="literal">ConcurrentHashMap</code>, but this time the contents of the <code class="literal">Map</code> are thread-safe mutable points rather than immutable ones. The <code class="literal">getLocation</code> method returns an unmodifiable copy of the underlying <code class="literal">Map</code>. Callers cannot add or remove vehicles, but could change the location of one of the vehicles by mutating the <code class="literal">SafePoint</code> values in the returned <code class="literal">Map</code>. Again, the “live” nature of the <code class="literal">Map</code> may be a benefit or a drawback, depending on the requirements. <code class="literal">PublishingVehicleTracker</code> is thread-safe, but would not be so if it imposed any additional constraints on the valid values for vehicle locations. If it needed to be able to “veto” changes to <a id="iddle1164" class="indexterm"/><a id="iddle1344" class="indexterm"/><a id="iddle1345" class="indexterm"/><a id="iddle1722" class="indexterm"/><a id="iddle1723" class="indexterm"/><a id="iddle2010" class="indexterm"/><a id="iddle2011" class="indexterm"/><a id="iddle2028" class="indexterm"/><a id="iddle2029" class="indexterm"/><a id="iddle2288" class="indexterm"/><a id="iddle2391" class="indexterm"/><a id="iddle2392" class="indexterm"/><a id="iddle2414" class="indexterm"/><a id="iddle2415" class="indexterm"/><a id="iddle2416" class="indexterm"/><a id="iddle3593" class="indexterm"/><a id="iddle3594" class="indexterm"/><a id="iddle3737" class="indexterm"/><a id="iddle3738" class="indexterm"/><a id="iddle3997" class="indexterm"/><a id="iddle3998" class="indexterm"/><a id="iddle3999" class="indexterm"/><a id="iddle4492" class="indexterm"/><a id="iddle4565" class="indexterm"/><a id="iddle4567" class="indexterm"/><a id="iddle4568" class="indexterm"/>vehicle locations or to take action when a location changes, the approach taken by <code class="literal">PublishingVehicleTracker</code> would not be appropriate.</p>
+</div>
+<div class="footnotes"><br/><hr/><div class="footnote"><p><sup>[<a id="ftn.ch04fn05" href="#ch04fn05" class="para">5</a>] </sup>If <code class="literal">count</code> were not <code class="literal">final</code>, the thread safety analysis of <code class="literal">CountingFactorizer</code> would be more complicated. If <code class="literal">CountingFactorizer</code> could modify <code class="literal">count</code> to reference a different <code class="literal">AtomicLong</code>, we would then have to ensure that this update was visible to all threads that might access the count, and that there were no race conditions regarding the value of the <code class="literal">count</code> reference. This is another good reason to use <code class="literal">final</code> fields wherever practical.</p></div><div class="footnote"><p><sup>[<a id="ftn.ch04fn06" href="#ch04fn06" class="para">6</a>] </sup>The private constructor exists to avoid the race condition that would occur if the copy constructor were implemented as <code class="literal">this(p.x, p.y)</code>; this is an example of the <span class="emphasis"><em>private constructor capture idiom</em></span> (<a class="link" href="bi01.html#biblio01_004">Bloch and Gafter, 2005</a>).</p></div></div></div></body></html>

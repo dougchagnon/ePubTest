@@ -1,0 +1,373 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN" "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml"><head><title>Chapter 7. Cancellation and Shutdown</title><link rel="stylesheet" href="styles/convert.css" type="text/css"/></head><body><div class="chapter" title="Chapter 7. Cancellation and Shutdown"><div class="titlepage"><div><div><h1 class="title"><a id="ch07"/>Chapter 7. Cancellation and Shutdown</h1></div></div></div>
+
+
+
+
+<p><a id="iddle1043" class="indexterm"/><a id="iddle1044" class="indexterm"/><a id="iddle1296" class="indexterm"/><a id="iddle1297" class="indexterm"/><a id="iddle1298" class="indexterm"/><a id="iddle1299" class="indexterm"/><a id="iddle1314" class="indexterm"/><a id="iddle1351" class="indexterm"/><a id="iddle1354" class="indexterm"/><a id="iddle1565" class="indexterm"/><a id="iddle1643" class="indexterm"/><a id="iddle2034" class="indexterm"/><a id="iddle2309" class="indexterm"/><a id="iddle2735" class="indexterm"/><a id="iddle2796" class="indexterm"/><a id="iddle2811" class="indexterm"/><a id="iddle2812" class="indexterm"/><a id="iddle2963" class="indexterm"/><a id="iddle2964" class="indexterm"/><a id="iddle2965" class="indexterm"/><a id="iddle2966" class="indexterm"/><a id="iddle2967" class="indexterm"/><a id="iddle2968" class="indexterm"/><a id="iddle2969" class="indexterm"/><a id="iddle2970" class="indexterm"/><a id="iddle2971" class="indexterm"/><a id="iddle2975" class="indexterm"/><a id="iddle3650" class="indexterm"/><a id="iddle3651" class="indexterm"/><a id="iddle3798" class="indexterm"/><a id="iddle4246" class="indexterm"/><a id="iddle4251" class="indexterm"/><a id="iddle4467" class="indexterm"/><a id="iddle4514" class="indexterm"/><a id="iddle4609" class="indexterm"/><a id="iddle4674" class="indexterm"/><a id="iddle4675" class="indexterm"/><a id="iddle4676" class="indexterm"/><a id="iddle4684" class="indexterm"/><a id="iddle4775" class="indexterm"/><a id="iddle4776" class="indexterm"/><a id="iddle4828" class="indexterm"/><a id="iddle4841" class="indexterm"/><a id="iddle4842" class="indexterm"/><a id="iddle4843" class="indexterm"/><a id="iddle4844" class="indexterm"/><a id="iddle5014" class="indexterm"/>It is easy to start tasks and threads. Most of the time we allow them to decide when to stop by letting them run to completion. Sometimes, however, we want to stop tasks or threads earlier than they would on their own, perhaps because the user cancelled an operation or the application needs to shut down quickly.</p>
+<p>Getting tasks and threads to stop safely, quickly, and reliably is not always easy. Java does not provide any mechanism for safely forcing a thread to stop what it is doing.<sup>[<a id="ch07fn01" href="#ftn.ch07fn01" class="footnote">1</a>]</sup> Instead, it provides <span class="emphasis"><em>interruption</em></span>, a cooperative mechanism that lets one thread ask another to stop what it is doing.</p>
+<p>The cooperative approach is required because we rarely want a task, thread, or service to stop <span class="emphasis"><em>immediately</em></span>, since that could leave shared data structures in an inconsistent state. Instead, tasks and services can be coded so that, when requested, they clean up any work currently in progress and <span class="emphasis"><em>then</em></span> terminate. This provides greater flexibility, since the task code itself is usually better able to assess the cleanup required than is the code requesting cancellation.</p>
+<p>End-of-lifecycle issues can complicate the design and implementation of tasks, services, and applications, and this important element of program design is too often ignored. Dealing well with failure, shutdown, and cancellation is one of the characteristics that distinguishes a well-behaved application from one that merely works. This chapter addresses mechanisms for cancellation and interruption, and how to code tasks and services to be responsive to cancellation requests.</p>
+
+
+
+<div class="section" title="Task Cancellation"><div class="titlepage"><div><div><h2 class="title"><a id="ch07lev1sec1"/>Task Cancellation</h2></div></div></div>
+
+<p>An activity is <span class="emphasis"><em>cancellable</em></span> if external code can move it to completion before its normal completion. There are a number of reasons why you might want to cancel an activity:</p>
+<div class="itemizedlist"><ul class="itemizedlist"><li class="listitem"><p title="User-requested cancellation."><b><span class="strong"><strong>User-requested cancellation.</strong></span> </b><a id="iddle1114" class="indexterm"/><a id="iddle1115" class="indexterm"/><a id="iddle1310" class="indexterm"/><a id="iddle1313" class="indexterm"/><a id="iddle2041" class="indexterm"/><a id="iddle2042" class="indexterm"/><a id="iddle2060" class="indexterm"/><a id="iddle2221" class="indexterm"/><a id="iddle2222" class="indexterm"/><a id="iddle2223" class="indexterm"/><a id="iddle2276" class="indexterm"/><a id="iddle2277" class="indexterm"/><a id="iddle2278" class="indexterm"/><a id="iddle2301" class="indexterm"/><a id="iddle2302" class="indexterm"/><a id="iddle2303" class="indexterm"/><a id="iddle2304" class="indexterm"/><a id="iddle2369" class="indexterm"/><a id="iddle2370" class="indexterm"/><a id="iddle3574" class="indexterm"/><a id="iddle3988" class="indexterm"/><a id="iddle3989" class="indexterm"/><a id="iddle4196" class="indexterm"/><a id="iddle4197" class="indexterm"/><a id="iddle4250" class="indexterm"/><a id="iddle4610" class="indexterm"/><a id="iddle4612" class="indexterm"/><a id="iddle4613" class="indexterm"/><a id="iddle4891" class="indexterm"/><a id="iddle4892" class="indexterm"/><a id="iddle4977" class="indexterm"/><a id="iddle4979" class="indexterm"/><a id="iddle5003" class="indexterm"/><a id="iddle5024" class="indexterm"/><a id="iddle5025" class="indexterm"/><a id="iddle5116" class="indexterm"/><a id="iddle5117" class="indexterm"/>The user clicked on the “cancel” button in a GUI application, or requested cancellation through a management interface such as JMX (Java Management Extensions).</p></li><li class="listitem"><p title="Time-limited activities."><b><span class="strong"><strong>Time-limited activities.</strong></span> </b>An application searches a problem space for a finite amount of time and chooses the best solution found within that time. When the timer expires, any tasks still searching are cancelled.</p></li><li class="listitem"><p title="Application events."><b><span class="strong"><strong>Application events.</strong></span> </b>An application searches a problem space by decomposing it so that different tasks search different regions of the problem space. When one task finds a solution, all other tasks still searching are cancelled.</p></li><li class="listitem"><p title="Errors."><b><span class="strong"><strong>Errors.</strong></span> </b>A web crawler searches for relevant pages, storing pages or summary data to disk. When a crawler task encounters an error (for example, the disk is full), other crawling tasks are cancelled, possibly recording their current state so that they can be restarted later.</p></li><li class="listitem"><p title="Shutdown."><b><span class="strong"><strong>Shutdown.</strong></span> </b>When an application or service is shut down, something must be done about work that is currently being processed or queued for processing. In a graceful shutdown, tasks currently in progress might be allowed to complete; in a more immediate shutdown, currently executing tasks might be cancelled.</p></li></ul></div>
+<p class="continued">There is no safe way to preemptively stop a thread in Java, and therefore no safe way to preemptively stop a task. There are only cooperative mechanisms, by which the task and the code requesting cancellation follow an agreed-upon protocol.</p>
+<p>One such cooperative mechanism is setting a “cancellation requested” flag that the task checks periodically; if it finds the flag set, the task terminates early. <code class="literal">PrimeGenerator</code> in <a class="link" href="ch07.html#ch07list01" title="Example 7.1. Using a Volatile Field to Hold Cancellation State.">Listing 7.1</a>, which enumerates prime numbers until it is cancelled, illustrates this technique. The <code class="literal">cancel</code> method sets the <code class="literal">cancelled</code> flag, and the main loop polls this flag before searching for the next prime number. (For this to work reliably, <code class="literal">cancelled</code> must be <code class="literal">volatile</code>.)</p>
+<p><a class="link" href="ch07.html#ch07list02" title="Example 7.2. Generating a Second’s Worth of Prime Numbers.">Listing 7.2</a> shows a sample use of this class that lets the prime generator run for one second before cancelling it. The generator won’t necessarily stop after exactly one second, since there may be some delay between the time that cancellation is requested and the time that the <code class="literal">run</code> loop next checks for cancellation. The <code class="literal">cancel</code> method is called from a <code class="literal">finally</code> block to ensure that the prime generator is cancelled even if the the call to <code class="literal">sleep</code> is interrupted. If <code class="literal">cancel</code> were not called, the prime-seeking thread would run forever, consuming CPU cycles and preventing the JVM from exiting.</p>
+<p>A task that wants to be cancellable must have a <span class="emphasis"><em>cancellation policy</em></span> that specifies the “how”, “when”, and “what” of cancellation—how other code can request cancellation, when the task checks whether cancellation has been requested, and what actions the task takes in response to a cancellation request.</p>
+<p>Consider the real-world example of stopping payment on a check. Banks have rules about how to submit a stop-payment request, what responsiveness guarantees it makes in processing such requests, and what procedures it follows when <a id="iddle1214" class="indexterm"/><a id="iddle1223" class="indexterm"/><a id="iddle1304" class="indexterm"/><a id="iddle2371" class="indexterm"/><a id="iddle2394" class="indexterm"/><a id="iddle2538" class="indexterm"/><a id="iddle2539" class="indexterm"/><a id="iddle2785" class="indexterm"/><a id="iddle2797" class="indexterm"/><a id="iddle2820" class="indexterm"/><a id="iddle3751" class="indexterm"/><a id="iddle4448" class="indexterm"/><a id="iddle4725" class="indexterm"/><a id="iddle4779" class="indexterm"/><a id="iddle4781" class="indexterm"/><a id="iddle2157" class="indexterm"/>payment is actually stopped (such as notifying the other bank involved in the transaction and assessing a fee against the payor’s account). Taken together, these procedures and guarantees comprise the cancellation policy for check payment.</p>
+<div class="example"><a id="ch07list01"/><p class="title"><b>Example 7.1. Using a <code class="literal">Volatile</code> Field to Hold Cancellation State.</b></p><div class="example-contents">
+
+
+<pre class="programlisting">@ThreadSafe
+public class PrimeGenerator implements Runnable {
+     @GuardedBy("this")
+     private final List&lt;BigInteger&gt; primes
+             = new ArrayList&lt;BigInteger&gt;();
+     private  <span class="strong"><strong>volatile</strong></span> boolean <span class="strong"><strong>cancelled;</strong></span>
+
+     public void run() {
+         BigInteger p = BigInteger.ONE;
+         while (<span class="strong"><strong>!cancelled</strong></span> ) {
+             p = p.nextProbablePrime();
+             synchronized (this) {
+                 primes.add(p);
+             }
+         }
+     }
+
+     public void cancel() { <span class="strong"><strong>cancelled = true;</strong></span>  }
+
+     public synchronized List&lt;BigInteger&gt; get() {
+         return new ArrayList&lt;BigInteger&gt;(primes);
+     }
+}
+</pre>
+</div></div><br class="example-break"/>
+<div class="example"><a id="ch07list02"/><p class="title"><b>Example 7.2. Generating a Second’s Worth of Prime Numbers.</b></p><div class="example-contents">
+
+
+<pre class="programlisting">List&lt;BigInteger&gt; aSecondOfPrimes() throws InterruptedException {
+    PrimeGenerator generator = new PrimeGenerator();
+    new Thread(generator).start();
+    try {
+        SECONDS.sleep(1);
+    } finally {
+        generator.cancel();
+    }
+    return generator.get();
+}
+</pre>
+</div></div><br class="example-break"/>
+<p><code class="literal">PrimeGenerator</code> uses a simple cancellation policy: client code requests cancellation by calling <code class="literal">cancel</code>, <code class="literal">PrimeGenerator</code> checks for cancellation once per prime found and exits when it detects cancellation has been requested.</p>
+<div class="section" title="Interruption"><div class="titlepage"><div><div><h3 class="title"><a id="ch07lev2sec1"/>Interruption</h3></div></div></div>
+
+<p>The cancellation mechanism in <code class="literal">PrimeGenerator</code> will eventually cause the primeseeking task to exit, but it might take a while. If, however, a task that uses this approach calls a blocking method such as <code class="literal">BlockingQueue.put</code>, we could have a more serious problem—the task might never check the cancellation flag and therefore might never terminate.</p>
+<p><code class="literal">BrokenPrimeProducer</code> in <a class="link" href="ch07.html#ch07list03" title="Example 7.3. Unreliable Cancellation that can Leave Producers Stuck in a Blocking Operation. Don’t Do this.">Listing 7.3</a> illustrates this problem. The producer thread generates primes and places them on a blocking queue. If the producer gets ahead of the consumer, the queue will fill up and <code class="literal">put</code> will block. What happens if the consumer tries to cancel the producer task while it is blocked in <code class="literal">put</code>? It can call <code class="literal">cancel</code> which will set the <code class="literal">cancelled</code> flag—but the producer will never check the flag because it will never emerge from the blocking <code class="literal">put</code> (because the consumer has stopped retrieving primes from the queue).</p>
+<p>As we hinted in <a class="link" href="ch05.html" title="Chapter 5. Building Blocks">Chapter 5</a>, certain blocking library methods support <span class="emphasis"><em>interruption</em></span>. Thread interruption is a cooperative mechanism for a thread to signal another thread that it should, at its convenience and if it feels like it, stop what it is doing and do something else.</p>
+<div class="sidebar"><a id="ch07sb01"/><p class="title"><b/></p>
+<p>There is nothing in the API or language specification that ties interruption to any specific cancellation semantics, but in practice, using interruption for anything but cancellation is fragile and difficult to sustain in larger applications.</p>
+</div>
+<p>Each thread has a boolean <span class="emphasis"><em>interrupted status</em></span>; interrupting a thread sets its interrupted status to true. <code class="literal">Thread</code> contains methods for interrupting a thread and querying the interrupted status of a thread, as shown in <a class="link" href="ch07.html#ch07list04" title="Example 7.4. Interruption Methods in Thread.">Listing 7.4</a>. The <code class="literal">interrupt</code> method interrupts the target thread, and <code class="literal">isInterrupted</code> returns the interrupted status of the target thread. The poorly named static <code class="literal">interrupted</code> method <span class="emphasis"><em>clears</em></span> the interrupted status of the current thread and returns its previous value; this is the only way to clear the interrupted status.</p>
+<p>Blocking library methods like <code class="literal">Thread.sleep</code> and <code class="literal">Object.wait</code> try to detect when a thread has been interrupted and return early. They respond to interruption by clearing the interrupted status and throwing <code class="literal">InterruptedException</code>, indicating that the blocking operation completed early due to interruption. The JVM makes no guarantees on how quickly a blocking method will detect interruption, but in practice this happens reasonably quickly.</p>
+
+<p/><div class="example"><a id="ch07list03"/><p class="title"><b>Example 7.3. <a id="iddle2092" class="indexterm"/><a id="iddle4726" class="indexterm"/>Unreliable Cancellation that can Leave Producers Stuck in a Blocking Operation. <span class="emphasis"><em>Don’t Do this.</em></span></b></p><div class="example-contents">
+
+
+<div class="mediaobject"><img src="graphics/face.jpg" width="52" alt="example classesBrokenPrimeProducerThreadinterruption methodsUnreliable Cancellation that can Leave Producers Stuck in a Blocking Operation. Don’t Do this."/></div>
+<pre class="programlisting">class BrokenPrimeProducer extends Thread {
+    private final BlockingQueue&lt;BigInteger&gt; queue;
+    private volatile boolean cancelled = false;
+
+    BrokenPrimeProducer(BlockingQueue&lt;BigInteger&gt; queue) {
+        this.queue = queue;
+    }
+
+    public void run() {
+        try {
+            BigInteger p = BigInteger.ONE;
+            while (<span class="strong"><strong>!cancelled)</strong></span>
+                queue.put(p = p.nextProbablePrime());
+        } catch (InterruptedException consumed) { }
+    }
+
+    public void cancel() { <span class="strong"><strong>cancelled = true;</strong></span>  }
+}
+
+void consumePrimes() throws InterruptedException {
+    BlockingQueue&lt;BigInteger&gt; primes = ...;
+    BrokenPrimeProducer producer = new BrokenPrimeProducer(primes);
+    producer.start();
+    try {
+        while (needMorePrimes())
+            consume(primes.take());
+    } finally {
+        producer.cancel();
+    }
+}
+</pre>
+</div></div><br class="example-break"/>
+<div class="example"><a id="ch07list04"/><p class="title"><b>Example 7.4. Interruption Methods in <code class="literal">Thread</code>.</b></p><div class="example-contents">
+
+<pre class="programlisting">public class Thread {
+    public void interrupt() { ... }
+    public boolean isInterrupted() { ... }
+    public static boolean interrupted() { ... }
+    ...
+}
+</pre>
+</div></div><br class="example-break"/>
+<p><a id="iddle1224" class="indexterm"/><a id="iddle1309" class="indexterm"/><a id="iddle1312" class="indexterm"/><a id="iddle1848" class="indexterm"/><a id="iddle2781" class="indexterm"/><a id="iddle2782" class="indexterm"/><a id="iddle2813" class="indexterm"/><a id="iddle2814" class="indexterm"/><a id="iddle2818" class="indexterm"/><a id="iddle3557" class="indexterm"/><a id="iddle3576" class="indexterm"/><a id="iddle3752" class="indexterm"/><a id="iddle3873" class="indexterm"/><a id="iddle3874" class="indexterm"/><a id="iddle3875" class="indexterm"/><a id="iddle4470" class="indexterm"/><a id="iddle4517" class="indexterm"/><a id="iddle4727" class="indexterm"/>If a thread is interrupted when it is <span class="emphasis"><em>not</em></span> blocked, its interrupted status is set, and it is up to the activity being cancelled to poll the interrupted status to detect interruption. In this way interruption is “sticky”—if it doesn’t trigger an <code class="literal">InterruptedException</code>, evidence of interruption persists until someone deliberately clears the interrupted status.</p>
+<div class="sidebar"><a id="ch07sb02"/><p class="title"><b/></p>
+<p>Calling <code class="literal">interrupt</code> does not necessarily stop the target thread from doing what it is doing; it merely delivers the message that interruption has been requested.</p>
+</div>
+<p>A good way to think about interruption is that it does not actually interrupt a running thread; it just <span class="emphasis"><em>requests</em></span> that the thread interrupt itself at the next convenient opportunity. (These opportunities are called <span class="emphasis"><em>cancellation points</em></span>.) Some methods, such as <code class="literal">wait</code>, <code class="literal">sleep</code>, and <code class="literal">join</code>, take such requests seriously, throwing an exception when they receive an interrupt request or encounter an already set interrupt status upon entry. Well behaved methods may totally ignore such requests so long as they leave the interruption request in place so that calling code can do something with it. Poorly behaved methods swallow the interrupt request, thus denying code further up the call stack the opportunity to act on it.</p>
+<p>The static <code class="literal">interrupted</code> method should be used with caution, because it clears the current thread’s interrupted status. If you call <code class="literal">interrupted</code> and it returns <code class="literal">true</code>, unless you are planning to swallow the interruption, you should do something with it—either throw <code class="literal">InterruptedException</code> or restore the interrupted status by calling <code class="literal">interrupt</code> again, as in <a class="link" href="ch05s04.html#ch05list10" title="Example 5.10. Restoring the Interrupted Status so as Not to Swallow the Interrupt.">Listing 5.10</a> on page <a class="link" href="ch05s04.html#ch05list10" title="Example 5.10. Restoring the Interrupted Status so as Not to Swallow the Interrupt.">94</a>.</p>
+<p><code class="literal">BrokenPrimeProducer</code> illustrates how custom cancellation mechanisms do not always interact well with blocking library methods. If you code your tasks to be responsive to interruption, you can use interruption as your cancellation mechanism and take advantage of the interruption support provided by many library classes.</p>
+<div class="sidebar"><a id="ch07sb03"/><p class="title"><b/></p>
+<p>Interruption is usually the most sensible way to implement cancellation.</p>
+</div>
+<p><code class="literal">BrokenPrimeProducer</code> can be easily fixed (and simplified) by using interruption instead of a boolean flag to request cancellation, as shown in <a class="link" href="ch07.html#ch07list05" title="Example 7.5. Using Interruption for Cancellation.">Listing 7.5</a>. There are two points in each loop iteration where interruption may be detected: in the blocking <code class="literal">put</code> call, and by explicitly polling the interrupted status in the loop header. The explicit test is not strictly necessary here because of the blocking <code class="literal">put</code> call, but it makes <code class="literal">PrimeProducer</code> more responsive to interruption because it checks for interruption <span class="emphasis"><em>before</em></span> starting the lengthy task of searching for a prime, rather than after. When calls to interruptible blocking methods are not frequent enough to deliver the desired responsiveness, explicitly testing the interrupted status can help.</p>
+
+<p/><div class="example"><a id="ch07list05"/><p class="title"><b>Example 7.5. Using Interruption for Cancellation.</b></p><div class="example-contents">
+
+
+<pre class="programlisting">class PrimeProducer extends Thread {
+    private final BlockingQueue&lt;BigInteger&gt; queue;
+
+    PrimeProducer(BlockingQueue&lt;BigInteger&gt; queue) {
+        this.queue = queue;
+    }
+
+    public void run() {
+        try {
+            BigInteger p = BigInteger.ONE;
+            while (<span class="strong"><strong>!Thread.currentThread().isInterrupted())</strong></span>
+                queue.put(p = p.nextProbablePrime());
+        } catch (InterruptedException consumed) {
+            <span class="emphasis"><em>/*  Allow thread to exit  */</em></span>
+        }
+    }
+    public void cancel() { interrupt(); }
+}
+</pre>
+</div></div><br class="example-break"/>
+</div>
+<div class="section" title="Interruption Policies"><div class="titlepage"><div><div><h3 class="title"><a id="ch07lev2sec2"/>Interruption Policies</h3></div></div></div>
+
+<p><a id="iddle1311" class="indexterm"/><a id="iddle2158" class="indexterm"/><a id="iddle2809" class="indexterm"/><a id="iddle2810" class="indexterm"/><a id="iddle3575" class="indexterm"/><a id="iddle3584" class="indexterm"/><a id="iddle3585" class="indexterm"/><a id="iddle4611" class="indexterm"/><a id="iddle4657" class="indexterm"/><a id="iddle4658" class="indexterm"/><a id="iddle4833" class="indexterm"/>Just as tasks should have a cancellation policy, threads should have an <span class="emphasis"><em>interruption policy</em></span>. An interruption policy determines how a thread interprets an interruption request—what it does (if anything) when one is detected, what units of work are considered atomic with respect to interruption, and how quickly it reacts to interruption.</p>
+<p>The most sensible interruption policy is some form of thread-level or servicelevel cancellation: exit as quickly as practical, cleaning up if necessary, and possibly notifying some owning entity that the thread is exiting. It is possible to establish other interruption policies, such as pausing or resuming a service, but threads or thread pools with nonstandard interruption policies may need to be restricted to tasks that have been written with an awareness of the policy.</p>
+<p>It is important to distinguish between how <span class="emphasis"><em>tasks</em></span> and <span class="emphasis"><em>threads</em></span> should react to interruption. A single interrupt request may havemore than one desired recipient—interrupting a worker thread in a thread pool can mean both “cancel the current task” and “shut down the worker thread”.</p>
+<p>Tasks do not execute in threads they own; they borrow threads owned by a service such as a thread pool. Code that doesn’t own the thread (for a thread pool, any code outside of the thread pool implementation) should be careful to preserve the interrupted status so that the owning code can eventually act on it, even if the “guest” code acts on the interruption as well. (If you are house-sitting for someone, you don’t throw out the mail that comes while they’re away—you save it and let them deal with it when they get back, even if you do read their magazines.)</p>
+<p><a id="iddle1352" class="indexterm"/><a id="iddle1353" class="indexterm"/><a id="iddle1684" class="indexterm"/><a id="iddle1685" class="indexterm"/><a id="iddle1775" class="indexterm"/><a id="iddle1776" class="indexterm"/><a id="iddle2378" class="indexterm"/><a id="iddle2540" class="indexterm"/><a id="iddle2783" class="indexterm"/><a id="iddle2784" class="indexterm"/><a id="iddle2801" class="indexterm"/><a id="iddle2802" class="indexterm"/><a id="iddle2803" class="indexterm"/><a id="iddle2815" class="indexterm"/><a id="iddle3701" class="indexterm"/><a id="iddle3702" class="indexterm"/><a id="iddle3953" class="indexterm"/><a id="iddle3954" class="indexterm"/><a id="iddle3975" class="indexterm"/><a id="iddle4008" class="indexterm"/><a id="iddle4471" class="indexterm"/>This is why most blocking library methods simply throw <code class="literal">InterruptedException</code> in response to an interrupt. They will never execute in a thread they own, so they implement the most reasonable cancellation policy for task or library code: get out of the way as quickly as possible and communicate the interruption back to the caller so that code higher up on the call stack can take further action.</p>
+<p>A task needn’t necessarily drop everything when it detects an interruption request—it can choose to postpone it until a more opportune time by remembering that it was interrupted, finishing the task it was performing, and <span class="emphasis"><em>then</em></span> throwing <code class="literal">InterruptedException</code> or otherwise indicating interruption. This technique can protect data structures from corruption when an activity is interrupted in the middle of an update.</p>
+<p>A task should not assume anything about the interruption policy of its executing thread unless it is explicitly designed to run within a service that has a specific interruption policy. Whether a task interprets interruption as cancellation or takes some other action on interruption, it should take care to preserve the executing thread’s interruption status. If it is not simply going to propagate <code class="literal">InterruptedException</code> to its caller, it should restore the interruption status after catching <code class="literal">InterruptedException</code>:</p>
+<div class="informalexample">
+<pre class="programlisting">Thread.currentThread().interrupt();
+</pre>
+</div>
+<p class="continued">Just as task code should not make assumptions about what interruption means to its executing thread, cancellation code should not make assumptions about the interruption policy of arbitrary threads. A thread should be interrupted only by its owner; the owner can encapsulate knowledge of the thread’s interruption policy in an appropriate cancellation mechanism such as a shutdown method.</p>
+<div class="sidebar"><a id="ch07sb04"/><p class="title"><b/></p>
+<p>Because each thread has its own interruption policy, you should not interrupt a thread unless you know what interruption means to that thread.</p>
+</div>
+<p>Critics have derided the Java interruption facility because it does not provide a preemptive interruption capability and yet forces developers to handle <code class="literal">InterruptedException</code>. However, the ability to postpone an interruption request enables developers to craft flexible interruption policies that balance responsiveness and robustness as appropriate for the application.</p>
+</div>
+<div class="section" title="Responding to Interruption"><div class="titlepage"><div><div><h3 class="title"><a id="ch07lev2sec3"/>Responding to Interruption</h3></div></div></div>
+
+<p>As mentioned in <a class="link" href="ch05s04.html" title="Blocking and Interruptible Methods">Section 5.4</a>, when you call an interruptible blocking method such as <code class="literal">Thread.sleep</code> or <code class="literal">BlockingQueue.put</code>, there are two practical strategies for handling <code class="literal">InterruptedException</code>:</p>
+<div class="itemizedlist"><ul class="itemizedlist"><li class="listitem"><p>Propagate the exception (possibly after some task-specific cleanup), making your method an interruptible blocking method, too; or</p></li><li class="listitem"><p>Restore the interruption status so that code higher up on the call stack can deal with it.</p></li></ul></div>
+<p class="continued"><a id="iddle1215" class="indexterm"/><a id="iddle1216" class="indexterm"/><a id="iddle1992" class="indexterm"/><a id="iddle1993" class="indexterm"/><a id="iddle2542" class="indexterm"/><a id="iddle2786" class="indexterm"/><a id="iddle2805" class="indexterm"/><a id="iddle2819" class="indexterm"/><a id="iddle3174" class="indexterm"/><a id="iddle3175" class="indexterm"/><a id="iddle3604" class="indexterm"/><a id="iddle3951" class="indexterm"/><a id="iddle3952" class="indexterm"/><a id="iddle4014" class="indexterm"/><a id="iddle4015" class="indexterm"/><a id="iddle4518" class="indexterm"/>Propagating <code class="literal">InterruptedException</code> can be as easy as adding <code class="literal">InterruptedException</code> to the <code class="literal">throws</code> clause, as shown by <code class="literal">getNextTask</code> in <a class="link" href="ch07.html#ch07list06" title="Example 7.6. Propagating InterruptedException to Callers.">Listing 7.6</a>.</p>
+<div class="example"><a id="ch07list06"/><p class="title"><b>Example 7.6. Propagating <code class="literal">InterruptedException</code> to Callers.</b></p><div class="example-contents">
+
+<pre class="programlisting">BlockingQueue&lt;Task&gt; queue;
+...
+public Task getNextTask() throws InterruptedException {
+    return queue.take();
+}
+</pre>
+</div></div><br class="example-break"/>
+<p>If you don’t want to or cannot propagate <code class="literal">InterruptedException</code> (perhaps because your task is defined by a <code class="literal">Runnable</code>), you need to find another way to preserve the interruption request. The standard way to do this is to restore the interrupted status by calling <code class="literal">interrupt</code> again. What you should <span class="emphasis"><em>not</em></span> do is swallow the <code class="literal">InterruptedException</code> by catching it and doing nothing in the <code class="literal">catch</code> block, unless your code is actually implementing the interruption policy for a thread. <code class="literal">PrimeProducer</code> swallows the interrupt, but does so with the knowledge that the thread is about to terminate and that therefore there is no code higher up on the call stack that needs to know about the interruption. Most code does not know what thread it will run in and so should preserve the interrupted status.</p>
+<div class="sidebar"><a id="ch07sb05"/><p class="title"><b/></p>
+<p>Only code that implements a thread’s interruption policy may swallow an interruption request. General-purpose task and library code should never swallow interruption requests.</p>
+</div>
+<p>Activities that do not support cancellation but still call interruptible blocking methods will have to call them in a loop, retrying when interruption is detected. In this case, they should save the interruption status locally and restore it just before returning, as shown in <a class="link" href="ch07.html#ch07list07" title="Example 7.7. Noncancelable Task that Restores Interruption Before Exit.">Listing 7.7</a>, rather than immediately upon catching <code class="literal">InterruptedException</code>. Setting the interrupted status too early could result in an infinite loop, because most interruptible blocking methods check the interrupted status on entry and throw <code class="literal">InterruptedException</code> immediately if it is set. (Interruptible methods usually poll for interruption before blocking or doing any significant work, so as to be as responsive to interruption as possible.)</p>
+<p>If your code does not call interruptible blocking methods, it can still be made responsive to interruption by polling the current thread’s interrupted status throughout the task code. Choosing a polling frequency is a tradeoff between efficiency and responsiveness. If you have high responsiveness requirements, you cannot call potentially long-running methods that are not themselves responsive to interruption, potentially restricting your options for calling library code.</p>
+<p>Cancellation can involve state other than the interruption status; interruption can be used to get the thread’s attention, and information stored elsewhere by the interrupting thread can be used to provide further instructions for the interrupted thread. (Be sure to use synchronization when accessing that information.)</p>
+
+<p/><div class="example"><a id="ch07list07"/><p class="title"><b>Example 7.7. Noncancelable Task that Restores Interruption Before Exit.</b></p><div class="example-contents">
+
+
+<pre class="programlisting">public Task getNextTask(BlockingQueue&lt;Taskgt; queue) {
+    boolean interrupted = false;
+    try {
+        while (true) {
+            try {
+                return queue.take();
+            } catch (InterruptedException e) {
+                interrupted = true;
+                <span class="emphasis"><em>// fall through and retry</em></span>
+            }
+        }
+    } finally {
+        if (interrupted)
+            Thread.currentThread().interrupt();
+    }
+}
+</pre>
+</div></div><br class="example-break"/>
+<p><a id="iddle4894" class="indexterm"/>For example, when a worker thread owned by a <code class="literal">ThreadPoolExecutor</code> detects interruption, it checks whether the pool is being shut down. If so, it performs some pool cleanup before terminating; otherwise it may create a new thread to restore the thread pool to the desired size.</p>
+</div>
+<div class="section" title="Example: Timed Run"><div class="titlepage"><div><div><h3 class="title"><a id="ch07lev2sec4"/>Example: Timed Run</h3></div></div></div>
+
+<p>Many problems can take forever to solve (e.g., enumerate all the prime numbers); for others, the answer might be found reasonably quickly but also might take forever. Being able to say “spend up to ten minutes looking for the answer” or “enumerate all the answers you can in ten minutes” can be useful in these situations.</p>
+<p>The <code class="literal">aSecondOfPrimes</code> method in <a class="link" href="ch07.html#ch07list02" title="Example 7.2. Generating a Second’s Worth of Prime Numbers.">Listing 7.2</a> starts a <code class="literal">PrimeGenerator</code> and interrupts it after a second. While the <code class="literal">PrimeGenerator</code> might take somewhat longer than a second to stop, it will eventually notice the interrupt and stop, allowing the thread to terminate. But another aspect of executing a task is that you want to find out if the task throws an exception. If <code class="literal">PrimeGenerator</code> throws an unchecked exception before the timeout expires, it will probably go unnoticed, since the prime generator runs in a separate thread that does not explicitly handle exceptions.</p>
+<p><a class="link" href="ch07.html#ch07list08" title="Example 7.8. Scheduling an Interrupt on a Borrowed Thread. Don’t Do this.">Listing 7.8</a> shows an attempt at running an arbitrary <code class="literal">Runnable</code> for a given amount of time. It runs the task in the calling thread and schedules a cancellation task to interrupt it after a given time interval. This addresses the problem of unchecked exceptions thrown from the task, since they can then be caught by the caller of <code class="literal">timedRun</code>.</p>
+<p>This is an appealingly simple approach, but it violates the rules: you should know a thread’s interruption policy before interrupting it. Since <code class="literal">timedRun</code> can be called from an arbitrary thread, it cannot know the calling thread’s interruption <a id="iddle1301" class="indexterm"/><a id="iddle2173" class="indexterm"/><a id="iddle2422" class="indexterm"/><a id="iddle2541" class="indexterm"/><a id="iddle2909" class="indexterm"/><a id="iddle2910" class="indexterm"/><a id="iddle2911" class="indexterm"/><a id="iddle4457" class="indexterm"/><a id="iddle4458" class="indexterm"/><a id="iddle4720" class="indexterm"/><a id="iddle4721" class="indexterm"/><a id="iddle4722" class="indexterm"/>policy. If the task completes before the timeout, the cancellation task that interrupts the thread in which <code class="literal">timedRun</code> was called could go off <span class="emphasis"><em>after</em></span> <code class="literal">timedRun</code> has returned to its caller. We don’t know what code will be running when that happens, but the result won’t be good. (It is possible but surprisingly tricky to eliminate this risk by using the <code class="literal">ScheduledFuture</code> returned by <code class="literal">schedule</code> to cancel the cancellation task.)</p>
+<div class="example"><a id="ch07list08"/><p class="title"><b>Example 7.8. Scheduling an Interrupt on a Borrowed Thread. <span class="emphasis"><em>Don’t Do this.</em></span></b></p><div class="example-contents">
+
+<div class="mediaobject"><img src="graphics/face.jpg" width="52" alt="Scheduling an Interrupt on a Borrowed Thread. Don’t Do this."/></div>
+<pre class="programlisting">private static final ScheduledExecutorService cancelExec = ...;
+
+public static void timedRun(Runnable r,
+                           long timeout, TimeUnit unit) {
+    final Thread taskThread = Thread.currentThread();
+    cancelExec.schedule(new Runnable() {
+        public void run() { <span class="strong"><strong>taskThread.interrupt();</strong></span> }
+    }, timeout, unit);
+    <span class="strong"><strong>r.run();</strong></span>
+}
+</pre>
+</div></div><br class="example-break"/>
+<p>Further, if the task is not responsive to interruption, <code class="literal">timedRun</code> will not return until the task finishes, which may be long after the desired timeout (or even not at all). A timed run service that doesn’t return after the specified time is likely to be irritating to its callers.</p>
+<p><a class="link" href="ch07.html#ch07list09" title="Example 7.9. Interrupting a Task in a Dedicated Thread.">Listing 7.9</a> addresses the exception-handling problem of <code class="literal">aSecondOfPrimes</code> and the problems with the previous attempt. The thread created to run the task can have its own execution policy, and even if the task doesn’t respond to the interrupt, the timed run method can still return to its caller. After starting the task thread, <code class="literal">timedRun</code> executes a timed <code class="literal">join</code> with the newly created thread. After <code class="literal">join</code> returns, it checks if an exception was thrown from the task and if so, rethrows it in the thread calling <code class="literal">timedRun</code>. The saved <code class="literal">Throwable</code> is shared between the two threads, and so is declared <code class="literal">volatile</code> to safely publish it from the task thread to the <code class="literal">timedRun</code> thread.</p>
+<p>This version addresses the problems in the previous examples, but because it relies on a timed <code class="literal">join</code>, it shares a deficiency with <code class="literal">join</code>: we don’t know if control was returned because the thread exited normally or because the <code class="literal">join</code> timed out.<sup>[<a id="ch07fn02" href="#ftn.ch07fn02" class="footnote">2</a>]</sup></p>
+</div>
+<div class="section" title="Cancellation Via Future"><div class="titlepage"><div><div><h3 class="title"><a id="ch07lev2sec5"/>Cancellation Via <code class="literal">Future</code></h3></div></div></div>
+
+<p>We’ve already used an abstraction for managing the lifecycle of a task, dealing with exceptions, and facilitating cancellation—<code class="literal">Future</code>. Following the general principle that it is better to use existing library classes than to roll your own, let’s build <code class="literal">timedRun</code> using <code class="literal">Future</code> and the task execution framework.</p>
+
+<p/><div class="example"><a id="ch07list09"/><p class="title"><b>Example 7.9. Interrupting a Task in a Dedicated Thread.</b></p><div class="example-contents">
+
+
+<div class="mediaobject"><img src="graphics/face1.jpg" width="45" alt="Interrupting a Task in a Dedicated Thread."/></div>
+<pre class="programlisting">public static void timedRun(final Runnable r,
+                            long timeout, TimeUnit unit)
+                            throws InterruptedException {
+    class RethrowableTask implements Runnable {
+        private volatile Throwable t;
+        public void run() {
+            try { r.run(); }
+            catch (Throwable t) { this.t = t; }
+        }
+        void rethrow() {
+            if (t != null)
+                throw launderThrowable(t);
+        }
+    }
+
+    RethrowableTask task = new RethrowableTask();
+    final Thread taskThread = new Thread(task);
+    <span class="strong"><strong>taskThread.start();</strong></span>
+    cancelExec.schedule(new Runnable() {
+        public void run() { <span class="strong"><strong>taskThread.interrupt();</strong></span>  }
+    }, timeout, unit);
+    <span class="strong"><strong>taskThread.join</strong></span>(unit.toMillis(timeout));
+    task.rethrow();
+}
+</pre>
+</div></div><br class="example-break"/>
+<p><a id="iddle2272" class="indexterm"/><a id="iddle4472" class="indexterm"/><code class="literal">ExecutorService.submit</code> returns a <code class="literal">Future</code> describing the task. <code class="literal">Future</code> has a <code class="literal">cancel</code> method that takes a boolean argument, <code class="literal">mayInterruptIfRunning</code>, and returns a value indicating whether the cancellation attempt was successful. (This tells you only whether it was able to deliver the interruption, not whether the task detected and acted on it.) When <code class="literal">mayInterruptIfRunning</code> is <code class="literal">true</code> and the task is currently running in some thread, then that thread is interrupted. Setting this argument to <code class="literal">false</code> means “don’t run this task if it hasn’t started yet”, and should be used for tasks that are not designed to handle interruption.</p>
+<p>Since you shouldn’t interrupt a thread unless you know its interruption policy, when is it OK to call <code class="literal">cancel</code> with an argument of <code class="literal">true</code>? The task execution threads created by the standard <code class="literal">Executor</code> implementations implement an interruption policy that lets tasks be cancelled using interruption, so it is safe to set <code class="literal">mayInterruptIfRunning</code> when cancelling tasks through their <code class="literal">Future</code>s when they are running in a standard <code class="literal">Executor</code>. You should not interrupt a pool thread directly when attempting to cancel a task, because you won’t know what task is running when the interrupt request is delivered—do this only through the task’s <code class="literal">Future</code>. This is yet another reason to code tasks to treat interruption as a cancellation request: then they can be cancelled through their <code class="literal">Future</code>s.</p>
+<p><a id="iddle1217" class="indexterm"/><a id="iddle1308" class="indexterm"/><a id="iddle2596" class="indexterm"/><a id="iddle2597" class="indexterm"/><a id="iddle2788" class="indexterm"/><a id="iddle2789" class="indexterm"/><a id="iddle2806" class="indexterm"/><a id="iddle2807" class="indexterm"/><a id="iddle3990" class="indexterm"/><a id="iddle4931" class="indexterm"/><a class="link" href="ch07.html#ch07list10" title="Example 7.10. Cancelling a Task Using Future.">Listing 7.10</a> shows a version of <code class="literal">timedRun</code> that submits the task to an <code class="literal">ExecutorService</code> and retrieves the result with a timed <code class="literal">Future.get</code>. If <code class="literal">get</code> terminates with a <code class="literal">TimeoutException</code>, the task is cancelled via its <code class="literal">Future</code>. (To simplify coding, this version calls <code class="literal">Future.cancel</code> unconditionally in a <code class="literal">finally</code> block, taking advantage of the fact that cancelling a completed task has no effect.) If the underlying computation throws an exception prior to cancellation, it is rethrown from <code class="literal">timedRun</code>, which is the most convenient way for the caller to deal with the exception. <a class="link" href="ch07.html#ch07list10" title="Example 7.10. Cancelling a Task Using Future.">Listing 7.10</a> also illustrates another good practice: cancelling tasks whose result is no longer needed. (This technique was also used in <a class="link" href="ch06s03.html#ch06list13" title="Example 6.13. Waiting for Image Download with Future.">Listing 6.13</a> on page <a class="link" href="ch06s03.html#ch06list13" title="Example 6.13. Waiting for Image Download with Future.">128</a> and <a class="link" href="ch06s03.html#ch06list16" title="Example 6.16. Fetching an Advertisement with a Time Budget.">Listing 6.16</a> on page <a class="link" href="ch06s03.html#ch06list16" title="Example 6.16. Fetching an Advertisement with a Time Budget.">132</a>.)</p>
+<div class="example"><a id="ch07list10"/><p class="title"><b>Example 7.10. Cancelling a Task Using <code class="literal">Future</code>.</b></p><div class="example-contents">
+
+<pre class="programlisting">public static void timedRun(Runnable r,
+                            long timeout, TimeUnit unit)
+                            throws InterruptedException {
+    <span class="strong"><strong>Future&lt;?&gt; task = taskExec.submit(r);</strong></span>
+    try {
+        <span class="strong"><strong>task.get(timeout, unit);</strong></span>
+    } catch (TimeoutException e) {
+        <span class="emphasis"><em>// task will be cancelled below</em></span>
+    } catch (ExecutionException e) {
+        <span class="emphasis"><em>// exception thrown in task; rethrow</em></span>
+        throw launderThrowable(e.getCause());
+    } finally {
+        <span class="emphasis"><em>// Harmless if task already completed</em></span>
+        <span class="strong"><strong>task.cancel(true);</strong></span>  <span class="emphasis"><em>// interrupt if running</em></span>
+    }
+}
+</pre>
+</div></div><br class="example-break"/>
+<div class="sidebar"><a id="ch07sb06"/><p class="title"><b/></p>
+<p>When <code class="literal">Future.get</code> throws <code class="literal">InterruptedException</code> or <code class="literal">TimeoutException</code> and you know that the result is no longer needed by the program, cancel the task with <code class="literal">Future.cancel</code>.</p>
+</div>
+</div>
+<div class="section" title="Dealing with Non-interruptible Blocking"><div class="titlepage"><div><div><h3 class="title"><a id="ch07lev2sec6"/>Dealing with Non-interruptible Blocking</h3></div></div></div>
+
+<p>Many blocking library methods respond to interruption by returning early and throwing <code class="literal">InterruptedException</code>, which makes it easier to build tasks that are responsive to cancellation. However, not all blocking methods or blocking mechanisms are responsive to interruption; if a thread is blocked performing synchronous socket I/O or waiting to acquire an intrinsic lock, interruption has no effect other than setting the thread’s interrupted status. We can sometimes convince threads blocked in noninterruptible activities to stop by means similar to interruption, but this requires greater awareness of why the thread is blocked.</p>
+<p title="Synchronous socket I/O in java.io."><b><span class="strong"><strong>Synchronous socket I/O in java.io.</strong></span> </b><a id="iddle1132" class="indexterm"/><a id="iddle1306" class="indexterm"/><a id="iddle1307" class="indexterm"/><a id="iddle2016" class="indexterm"/><a id="iddle2282" class="indexterm"/><a id="iddle2294" class="indexterm"/><a id="iddle2424" class="indexterm"/><a id="iddle2672" class="indexterm"/><a id="iddle2673" class="indexterm"/><a id="iddle2681" class="indexterm"/><a id="iddle2682" class="indexterm"/><a id="iddle2808" class="indexterm"/><a id="iddle2832" class="indexterm"/><a id="iddle2902" class="indexterm"/><a id="iddle2903" class="indexterm"/><a id="iddle2904" class="indexterm"/><a id="iddle3042" class="indexterm"/><a id="iddle3053" class="indexterm"/><a id="iddle3100" class="indexterm"/><a id="iddle3108" class="indexterm"/><a id="iddle3299" class="indexterm"/><a id="iddle4118" class="indexterm"/><a id="iddle4119" class="indexterm"/><a id="iddle4325" class="indexterm"/><a id="iddle4326" class="indexterm"/><a id="iddle4595" class="indexterm"/><a id="iddle4596" class="indexterm"/><a id="iddle4859" class="indexterm"/>The common form of blocking I/O in server applications is reading or writing to a socket. Unfortunately, the <code class="literal">read</code> and <code class="literal">write</code> methods in <code class="literal">InputStream</code> and <code class="literal">OutputStream</code> are not responsive to interruption, but closing the underlying socket makes any threads blocked in <code class="literal">read</code> or <code class="literal">write</code> throw a <code class="literal">SocketException</code>.</p>
+<p title="Synchronous I/O in java.nio."><b><span class="strong"><strong>Synchronous I/O in java.nio.</strong></span> </b>Interrupting a thread waiting on an <code class="literal">InterruptibleChannel</code> causes it to throw <code class="literal">ClosedByInterruptException</code> and close the channel (and also causes all other threads blocked on the channel to throw <code class="literal">ClosedByInterruptException</code>). Closing an <code class="literal">InterruptibleChannel</code> causes threads blocked on channel operations to throw <code class="literal">AsynchronousCloseException</code>. Most standard <code class="literal">Channel</code>s implement <code class="literal">InterruptibleChannel</code>.</p>
+<p title="Asynchronous I/O with Selector."><b><span class="strong"><strong>Asynchronous I/O with Selector.</strong></span> </b>If a thread is blocked in <code class="literal">Selector.select</code> (in <code class="literal">java.nio.channels</code>), calling close or <code class="literal">wakeup</code> causes it to return prematurely.</p>
+<p title="Lock acquisition."><b><span class="strong"><strong>Lock acquisition.</strong></span> </b>If a thread is blocked waiting for an intrinsic lock, there is nothing you can do to stop it short of ensuring that it eventually acquires the lock and makes enough progress that you can get its attention some other way. However, the explicit <code class="literal">Lock</code> classes offer the <code class="literal">lockInterruptibly</code> method, which allows you to wait for a lock and still be responsive to interrupts—see <a class="link" href="ch13.html" title="Chapter 13. Explicit Locks">Chapter 13</a>.</p>
+<p><code class="literal">ReaderThread</code> in <a class="link" href="ch07.html#ch07list11" title="Example 7.11. Encapsulating Nonstandard Cancellation in a Thread by Overriding Interrupt.">Listing 7.11</a> shows a technique for encapsulating nonstandard cancellation. <code class="literal">ReaderThread</code> manages a single socket connection, reading synchronously from the socket and passing any data received to <code class="literal">processBuffer</code>. To facilitate terminating a user connection or shutting down the server, <code class="literal">ReaderThread</code> overrides <code class="literal">interrupt</code> to both deliver a standard interrupt and close the underlying socket; thus interrupting a <code class="literal">ReaderThread</code> makes it stop what it is doing whether it is blocked in <code class="literal">read</code> or in an interruptible blocking method.</p>
+</div>
+<div class="section" title="Encapsulating Nonstandard Cancellation with newTaskFor"><div class="titlepage"><div><div><h3 class="title"><a id="ch07lev2sec7"/>Encapsulating Nonstandard Cancellation with <code class="literal">newTaskFor</code></h3></div></div></div>
+
+<p>The technique used in <code class="literal">ReaderThread</code> to encapsulate nonstandard cancellation can be refined using the <code class="literal">newTaskFor</code> hook added to <code class="literal">ThreadPoolExecutor</code> in Java 6. When a <code class="literal">Callable</code> is submitted to an <code class="literal">ExecutorService</code>, <code class="literal">submit</code> returns a <code class="literal">Future</code> that can be used to cancel the task. The <code class="literal">newTaskFor</code> hook is a factory method that creates the <code class="literal">Future</code> representing the task. It returns a <code class="literal">RunnableFuture</code>, an interface that extends both <code class="literal">Future</code> and <code class="literal">Runnable</code> (and is implemented by <code class="literal">FutureTask</code>).</p>
+<p>Customizing the task <code class="literal">Future</code> allows you to override <code class="literal">Future.cancel</code>. Custom cancellation code can perform logging or gather statistics on cancellation, and can also be used to cancel activities that are not responsive to interruption. <code class="literal">ReaderThread</code> encapsulates cancellation of socket-using threads by overriding <code class="literal">interrupt</code>; the same can be done for tasks by overriding <code class="literal">Future.cancel</code>.</p>
+<p><code class="literal">CancellableTask</code> in <a class="link" href="ch07s02.html#ch07list12" title="Example 7.12. Encapsulating Nonstandard Cancellation in a Task with Newtaskfor.">Listing 7.12</a> defines a <code class="literal">CancellableTask</code> interface that extends <code class="literal">Callable</code> and adds a <code class="literal">cancel</code> method and a <code class="literal">newTask</code> factory method for <a id="iddle2166" class="indexterm"/><a id="iddle1364" class="indexterm"/><a id="iddle2030" class="indexterm"/><a id="iddle2605" class="indexterm"/><a id="iddle2606" class="indexterm"/><a id="iddle2772" class="indexterm"/><a id="iddle2773" class="indexterm"/><a id="iddle2822" class="indexterm"/><a id="iddle2823" class="indexterm"/><a id="iddle2983" class="indexterm"/><a id="iddle3069" class="indexterm"/><a id="iddle3169" class="indexterm"/><a id="iddle3170" class="indexterm"/><a id="iddle3443" class="indexterm"/><a id="iddle3872" class="indexterm"/><a id="iddle4194" class="indexterm"/><a id="iddle4195" class="indexterm"/><a id="iddle4198" class="indexterm"/><a id="iddle4199" class="indexterm"/><a id="iddle4258" class="indexterm"/><a id="iddle4262" class="indexterm"/><a id="iddle4487" class="indexterm"/><a id="iddle4493" class="indexterm"/><a id="iddle4494" class="indexterm"/><a id="iddle4495" class="indexterm"/><a id="iddle4788" class="indexterm"/><a id="iddle4791" class="indexterm"/><a id="iddle4816" class="indexterm"/><a id="iddle4817" class="indexterm"/>constructing a <code class="literal">RunnableFuture</code>. <code class="literal">CancellingExecutor</code> extends <code class="literal">ThreadPoolExecutor</code>, and overrides <code class="literal">newTaskFor</code> to let a <code class="literal">CancellableTask</code> create its own <code class="literal">Future</code>.</p>
+<div class="example"><a id="ch07list11"/><p class="title"><b>Example 7.11. Encapsulating Nonstandard Cancellation in a <code class="literal">Thread</code> by Overriding <code class="literal">Interrupt</code>.</b></p><div class="example-contents">
+
+
+<pre class="programlisting">public class ReaderThread extends Thread {
+    private final Socket socket;
+    private final InputStream in;
+
+    public ReaderThread(Socket socket) throws IOException {
+        this.socket = socket;
+        this.in = socket.getInputStream();
+    }
+
+    public void  <span class="strong"><strong>interrupt()</strong></span>  {
+        try {
+            socket.close();
+        }
+        catch (IOException ignored) { }
+        finally {
+            <span class="strong"><strong>super.interrupt();</strong></span>
+        }
+    }
+
+    public void run() {
+        try {
+            byte[] buf = new byte[BUFSZ];
+            while (true) {
+                int count = in.read(buf);
+                if (count &lt; 0)
+                    break;
+                else if (count &gt; 0)
+                    processBuffer(buf, count);
+            }
+        } catch (IOException e) { <span class="emphasis"><em>/*  Allow thread to exit  */</em></span>  }
+    }
+}
+</pre>
+</div></div><br class="example-break"/>
+<p><code class="literal">SocketUsingTask</code> implements <code class="literal">CancellableTask</code> and defines <code class="literal">Future.cancel</code> to close the socket as well as call <code class="literal">super.cancel</code>. If a <code class="literal">SocketUsingTask</code> is cancelled through its <code class="literal">Future</code>, the socket is closed <span class="emphasis"><em>and</em></span> the executing thread is interrupted. This increases the task’s responsiveness to cancellation: not only can it safely call interruptible blocking methods while remaining responsive to cancellation, but it can also call blocking socket I/O methods.</p>
+</div>
+</div>
+
+
+
+
+
+
+
+
+<div class="footnotes"><br/><hr/><div class="footnote"><p><sup>[<a id="ftn.ch07fn01" href="#ch07fn01" class="para">1</a>] </sup>The deprecated <code class="literal">Thread.stop</code> and <code class="literal">suspend</code> methods were an attempt to provide such a mechanism, but were quickly realized to be seriously flawed and should be avoided. See <code class="literal"><a class="ulink" href="http://java.sun.com/j2se/1.5.0/docs/guide/misc/threadPrimitiveDeprecation.html">http://java.sun.com/j2se/1.5.0/docs/guide/misc/threadPrimitiveDeprecation.html</a></code> for an explanation of the problems with these methods.</p></div><div class="footnote"><p><sup>[<a id="ftn.ch07fn02" href="#ch07fn02" class="para">2</a>] </sup>This is a flaw in the <code class="literal">Thread</code> API, because whether or not the <code class="literal">join</code> completes successfully has memory visibility consequences in the Java Memory Model, but <code class="literal">join</code> does not return a status indicating whether it was successful.</p></div></div></div></body></html>

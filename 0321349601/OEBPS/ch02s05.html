@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN" "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml"><head><title>Liveness and Performance</title><link rel="stylesheet" href="styles/convert.css" type="text/css"/></head><body><div class="section" title="Liveness and Performance"><div class="titlepage"><div><div><h2 class="title"><a id="ch02lev1sec5"/>Liveness and Performance</h2></div></div></div>
+
+<p>In <code class="literal">UnsafeCachingFactorizer</code>, we introduced some caching into our factoring servlet in the hope of improving performance. Caching required some shared state, which in turn required synchronization to maintain the integrity of that state. But the way we used synchronization in <code class="literal">SynchronizedFactorizer</code> makes it perform badly. The synchronization policy for <code class="literal">SynchronizedFactorizer</code> is to <a id="iddle1474" class="indexterm"/><a id="iddle3531" class="indexterm"/><a id="iddle4111" class="indexterm"/><a id="iddle4480" class="indexterm"/>guard each state variable with the servlet object’s intrinsic lock, and that policy was implemented by synchronizing the entirety of the <code class="literal">service</code> method. This simple, coarse-grained approach restored safety, but at a high price.</p>
+<p>Because <code class="literal">service</code> is <code class="literal">synchronized</code>, only one thread may execute it at once. This subverts the intended use of the servlet framework—that servlets be able to handle multiple requests simultaneously—and can result in frustrated users if the load is high enough. If the servlet is busy factoring a large number, other clients have to wait until the current request is complete before the servlet can start on the new number. If the system has multiple CPUs, processors may remain idle even if the load is high. In any case, even short-running requests, such as those for which the value is cached, may take an unexpectedly long time because they must wait for previous long-running requests to complete.</p>
+<p><a class="link" href="ch02s05.html#ch02fig01" title="Figure 2.1. Poor Concurrency of SynchronizedFactorizer.">Figure 2.1</a> shows what happens when multiple requests arrive for the synchronized factoring servlet: they queue up and are handled sequentially. We would describe this web application as exhibiting <span class="emphasis"><em>poor concurrency</em></span>: the number of simultaneous invocations is limited not by the availability of processing resources, but by the structure of the application itself. Fortunately, it is easy to improve the concurrency of the servlet while maintaining thread safety by narrowing the scope of the <code class="literal">synchronized</code> block. You should be careful not to make the scope of the <code class="literal">synchronized</code> block <span class="emphasis"><em>too</em></span> small; you would not want to divide an operation that should be atomic into more than one <code class="literal">synchronized</code> block. But it is reasonable to try to exclude from <code class="literal">synchronized</code> blocks long-running operations that do not affect shared state, so that other threads are not prevented from accessing the shared state while the long-running operation is in progress.</p>
+<div class="figure-float"><div class="figure"><a id="ch02fig01"/><p class="title"><b>Figure 2.1. Poor Concurrency of <code class="literal">SynchronizedFactorizer</code>.</b></p><div class="figure-contents">
+
+
+<div class="mediaobject"><img src="graphics/02fig01.gif" height="191" alt="Poor Concurrency of SynchronizedFactorizer."/></div>
+</div></div><br class="figure-break"/></div>
+<p><code class="literal">CachedFactorizer</code> in <a class="link" href="ch02s05.html#ch02list08" title="Example 2.8. Servlet that Caches its Last Request and Result.">Listing 2.8</a> restructures the servlet to use two separate <code class="literal">synchronized</code> blocks, each limited to a short section of code. One guards the check-then-act sequence that tests whether we can just return the cached result, and the other guards updating both the cached number and the cached factors. As a bonus, we’ve reintroduced the hit counter and added a “cache hit” counter as well, updating them within the initial <code class="literal">synchronized</code> block. Because these counters constitute shared mutable state as well, we must use synchronization everywhere they are accessed. The portions of code that are outside the <code class="literal">synchronized</code> blocks operate exclusively on local (stack-based) variables, which are not <a id="iddle2093" class="indexterm"/>shared across threads and therefore do not require synchronization.</p>
+<div class="example"><a id="ch02list08"/><p class="title"><b>Example 2.8. Servlet that Caches its Last Request and Result.</b></p><div class="example-contents">
+
+<pre class="programlisting">@ThreadSafe
+public class CachedFactorizer implements Servlet {
+    @GuardedBy("this") private BigInteger lastNumber;
+    @GuardedBy("this") private BigInteger[] lastFactors;
+    @GuardedBy("this") private long hits;
+    @GuardedBy("this") private long cacheHits;
+
+    public <span class="strong"><strong>synchronized</strong></span> long getHits() { return hits; }
+    public <span class="strong"><strong>synchronized</strong></span> double getCacheHitRatio() {
+        return (double) cacheHits / (double) hits;
+    <span class="strong"><strong>}</strong></span>
+
+    public void service(ServletRequest req, ServletResponse resp) {
+        BigInteger i = extractFromRequest(req);
+        BigInteger[] factors = null;
+        <span class="strong"><strong>synchronized (this)</strong></span> {
+            ++hits;
+            if (i.equals(lastNumber)) {
+                ++cacheHits;
+                factors = lastFactors.clone();
+            }
+        }
+        if (factors == null) {
+            factors = factor(i);
+            <span class="strong"><strong>synchronized (this)</strong></span>  {
+                lastNumber = i;
+                lastFactors = factors.clone();
+            }
+        <span class="strong"><strong>}</strong></span>
+        encodeIntoResponse(resp, factors);
+    <span class="strong"><strong>}</strong></span>
+}
+</pre>
+</div></div><br class="example-break"/>
+<p><code class="literal">CachedFactorizer</code> no longer uses <code class="literal">AtomicLong</code> for the hit counter, instead reverting to using a <code class="literal">long</code> field. It would be safe to use <code class="literal">AtomicLong</code> here, but there is less benefit than there was in <code class="literal">CountingFactorizer</code>. Atomic variables are useful for effecting atomic operations on a single variable, but since we are already using <code class="literal">synchronized</code> blocks to construct atomic operations, using two different synchronization mechanisms would be confusing and would offer no performance or safety benefit.</p>
+<p>The restructuring of <code class="literal">CachedFactorizer</code> provides a balance between simplicity (synchronizing the entire method) and concurrency (synchronizing the shortest <a id="iddle2551" class="indexterm"/><a id="iddle2566" class="indexterm"/><a id="iddle2583" class="indexterm"/><a id="iddle2584" class="indexterm"/>possible code paths). Acquiring and releasing a lock has some overhead, so it is undesirable to break down <code class="literal">synchronized</code> blocks <span class="emphasis"><em>too</em></span> far (such as factoring <code class="literal">++hits</code> into its own <code class="literal">synchronized</code> block), even if this would not compromise atomicity. <code class="literal">CachedFactorizer</code> holds the lock when accessing state variables and for the duration of compound actions, but releases it before executing the potentially long-running factorization operation. This preserves thread safety without unduly affecting concurrency; the code paths in each of the <code class="literal">synchronized</code> blocks are “short enough”.</p>
+<p>Deciding how big or small to make <code class="literal">synchronized</code> blocks may require tradeoffs among competing design forces, including safety (which must not be compromised), simplicity, and performance. Sometimes simplicity and performance are at odds with each other, although as <code class="literal">CachedFactorizer</code> illustrates, a reasonable balance can usually be found.</p>
+<div class="sidebar"><a id="ch02sb12"/><p class="title"><b/></p>
+<p>There is frequently a tension between simplicity and performance. When implementing a synchronization policy, resist the temptation to prematurely sacriflce simplicity (potentially compromising safety) for the sake of performance.</p>
+</div>
+<p>Whenever you use locking, you should be aware of what the code in the block is doing and how likely it is to take a long time to execute. Holding a lock for a long time, either because you are doing something compute-intensive or because you execute a potentially blocking operation, introduces the risk of liveness or performance problems.</p>
+<div class="sidebar"><a id="ch02sb13"/><p class="title"><b/></p>
+<p>Avoid holding locks during lengthy computations or operations at risk of not completing quickly such as network or console I/O.</p>
+</div>
+</div></body></html>

@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN" "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml"><head><title>Adding Functionality to Existing Thread-safe Classes</title><link rel="stylesheet" href="styles/convert.css" type="text/css"/></head><body><div class="section" title="Adding Functionality to Existing Thread-safe Classes"><div class="titlepage"><div><div><h2 class="title"><a id="ch04lev1sec4"/>Adding Functionality to Existing Thread-safe Classes</h2></div></div></div>
+
+<p>The Java class library contains many useful “building block” classes. Reusing existing classes is often preferable to creating new ones: reuse can reduce development effort, development risk (because the existing components are already tested), and maintenance cost. Sometimes a thread-safe class that supports all of the operations we want already exists, but often the best we can find is a class that supports <span class="emphasis"><em>almost</em></span> all the operations we want, and then we need to add a new operation to it without undermining its thread safety.</p>
+<p>As an example, let’s say we need a thread-safe <code class="literal">List</code> with an atomic put-ifabsent operation. The synchronized <code class="literal">List</code> implementations nearly do the job, since they provide the <code class="literal">contains</code> and <code class="literal">add</code> methods from which we can construct a put-if-absent operation.</p>
+<p>The concept of put-if-absent is straightforward enough—check to see if an element is in the collection before adding it, and do not add it if it is already there. (Your “check-then-act” warning bells should be going off now.) The requirement that the class be thread-safe implicitly adds another requirement—that operations like put-if-absent be <span class="emphasis"><em>atomic</em></span>. Any reasonable interpretation suggests that, if you take a <code class="literal">List</code> that does not contain object <span class="emphasis"><em>X</em></span>, and add <span class="emphasis"><em>X</em></span> twice with put-if-absent, the resulting collection contains only one copy of <span class="emphasis"><em>X</em></span>. But, if put-if-absent were not atomic, with some unlucky timing two threads could both see that <span class="emphasis"><em>X</em></span> was not present and both add <span class="emphasis"><em>X</em></span>, resulting in two copies of <span class="emphasis"><em>X</em></span>.</p>
+<p>The safest way to add a new atomic operation is to modify the original class to support the desired operation, but this is not always possible because you may not have access to the source code or may not be free to modify it. If you can modify the original class, you need to understand the implementation’s synchronization policy so that you can enhance it in a manner consistent with its original design. Adding the new method directly to the class means that all the code that implements the synchronization policy for that class is still contained in one source file, facilitating easier comprehension and maintenance.</p>
+<p>Another approach is to extend the class, assuming it was designed for extension. <code class="literal">BetterVector</code> in <a class="link" href="ch04s04.html#ch04list13" title="Example 4.13. Extending Vector to have a Put-if-absent Method.">Listing 4.13</a> extends <code class="literal">Vector</code> to add a <code class="literal">putIfAbsent</code> method. Extending <code class="literal">Vector</code> is straightforward enough, but not all classes expose enough of their state to subclasses to admit this approach.</p>
+<p>Extension is more fragile than adding code directly to a class, because the implementation of the synchronization policy is now distributed over multiple, separately maintained source files. If the underlying class were to change its synchronization policy by choosing a different lock to guard its state variables, the subclass would subtly and silently break, because it no longer used the right lock to control concurrent access to the base class’s state. (The synchronization policy of <code class="literal">Vector</code> is fixed by its specification, so <code class="literal">BetterVector</code> would not suffer from this problem.)</p>
+
+<p/><div class="example"><a id="ch04list13"/><p class="title"><b>Example 4.13. Extending <code class="literal">Vector</code> to have a Put-if-absent Method.</b></p><div class="example-contents">
+
+
+<pre class="programlisting">@ThreadSafe
+public class BetterVector&lt;E&gt; extends Vector&lt;E&gt; {
+    public <span class="strong"><strong>synchronized</strong></span> boolean putIfAbsent(E x) {
+        boolean absent = !contains(x);
+        if (absent)
+            add(x);
+        return absent;
+    }
+}
+</pre>
+</div></div><br class="example-break"/>
+<div class="section" title="Client-side Locking"><div class="titlepage"><div><div><h3 class="title"><a id="ch04lev2sec11"/>Client-side Locking</h3></div></div></div>
+
+<p><a id="iddle1346" class="indexterm"/><a id="iddle1356" class="indexterm"/><a id="iddle1359" class="indexterm"/><a id="iddle2083" class="indexterm"/><a id="iddle2633" class="indexterm"/><a id="iddle2634" class="indexterm"/><a id="iddle3065" class="indexterm"/><a id="iddle4187" class="indexterm"/>For an <code class="literal">ArrayList</code> wrapped with a <code class="literal">Collections.synchronizedList</code> wrapper, neither of these approaches—adding a method to the original class or extending the class—works because the client code does not even know the class of the <code class="literal">List</code> object returned from the synchronized wrapper factories. A third strategy is to extend the functionality of the class without extending the class itself by placing extension code in a “helper” class.</p>
+<p><a class="link" href="ch04s04.html#ch04list14" title="Example 4.14. Non-thread-safe Attempt to Implement Put-if-absent. Don’t Do this.">Listing 4.14</a> shows a failed attempt to create a helper class with an atomic put-if-absent operation for operating on a thread-safe <code class="literal">List</code>.</p>
+<div class="example"><a id="ch04list14"/><p class="title"><b>Example 4.14. Non-thread-safe Attempt to Implement Put-if-absent. <span class="emphasis"><em>Don’t Do this.</em></span></b></p><div class="example-contents">
+
+<div class="mediaobject"><img src="graphics/face.jpg" width="52" alt="Non-thread-safe Attempt to Implement Put-if-absent. Don’t Do this."/></div>
+<pre class="programlisting">@NotThreadSafe
+public class ListHelper&lt;E&gt; {
+    public List&lt;E&gt; list =
+        Collections.synchronizedList(new ArrayList&lt;E&gt;());
+    ...
+    public <span class="strong"><strong>synchronized</strong></span> boolean putIfAbsent(E x) {
+        boolean absent = !list.contains(x);
+        if (absent)
+            list.add(x);
+        return absent;
+    }
+}
+</pre>
+</div></div><br class="example-break"/>
+<p>Why wouldn’t this work? After all, <code class="literal">putIfAbsent</code> is <code class="literal">synchronized</code>, right? The problem is that it synchronizes on the <span class="emphasis"><em>wrong lock</em></span>. Whatever lock the <code class="literal">List</code> uses to guard its state, it sure isn’t the lock on the <code class="literal">ListHelper</code>. <code class="literal">ListHelper</code> provides only the <span class="emphasis"><em>illusion of synchronization</em></span>; the various list operations, while all <code class="literal">synchronized</code>, use different locks, which means that <code class="literal">putIfAbsent</code> is <span class="emphasis"><em>not</em></span> atomic relative to other operations on the <code class="literal">List</code>. So there is no guarantee that another thread won’t modify the list while <code class="literal">putIfAbsent</code> is executing.</p>
+<p><a id="iddle1347" class="indexterm"/><a id="iddle1348" class="indexterm"/><a id="iddle1360" class="indexterm"/><a id="iddle1363" class="indexterm"/><a id="iddle1407" class="indexterm"/><a id="iddle1408" class="indexterm"/><a id="iddle1409" class="indexterm"/><a id="iddle1837" class="indexterm"/><a id="iddle1838" class="indexterm"/><a id="iddle1839" class="indexterm"/><a id="iddle1855" class="indexterm"/><a id="iddle1856" class="indexterm"/><a id="iddle1857" class="indexterm"/><a id="iddle1984" class="indexterm"/><a id="iddle2130" class="indexterm"/><a id="iddle2285" class="indexterm"/><a id="iddle2286" class="indexterm"/><a id="iddle2287" class="indexterm"/><a id="iddle2290" class="indexterm"/><a id="iddle2393" class="indexterm"/><a id="iddle2399" class="indexterm"/><a id="iddle2400" class="indexterm"/><a id="iddle2645" class="indexterm"/><a id="iddle3066" class="indexterm"/><a id="iddle3070" class="indexterm"/><a id="iddle4292" class="indexterm"/><a id="iddle4581" class="indexterm"/><a id="iddle4582" class="indexterm"/><a id="iddle5171" class="indexterm"/>To make this approach work, we have to use the <span class="emphasis"><em>same</em></span> lock that the <code class="literal">List</code> uses by using <span class="emphasis"><em>client-side locking</em></span> or <span class="emphasis"><em>external locking</em></span>. Client-side locking entails guarding client code that uses some object <span class="emphasis"><em>X</em></span> with the lock <span class="emphasis"><em>X</em></span> uses to guard its own state. In order to use client-side locking, you must know what lock <span class="emphasis"><em>X</em></span> uses.</p>
+<p>The documentation for <code class="literal">Vector</code> and the synchronized wrapper classes states, albeit obliquely, that they support client-side locking, by using the intrinsic lock for the <code class="literal">Vector</code> or the wrapper collection (not the wrapped collection). <a class="link" href="ch04s04.html#ch04list15" title="Example 4.15. Implementing Put-if-absent with Client-side Locking.">Listing 4.15</a> shows a <code class="literal">putIfAbsent</code> operation on a thread-safe <code class="literal">List</code> that correctly uses client-side locking.</p>
+<div class="example"><a id="ch04list15"/><p class="title"><b>Example 4.15. Implementing Put-if-absent with Client-side Locking.</b></p><div class="example-contents">
+
+<pre class="programlisting">@ThreadSafe
+public class ListHelper&lt;E&gt; {
+    public List&lt;E&gt; list =
+        Collections.synchronizedList(new ArrayList&lt;E&gt;());
+    ...
+    public boolean putIfAbsent(E x) {
+        <span class="strong"><strong>synchronized (list)</strong></span>  {
+            boolean absent = !list.contains(x);
+            if (absent)
+                list.add(x);
+            return absent;
+        }
+    }
+}
+</pre>
+</div></div><br class="example-break"/>
+<p>If extending a class to add another atomic operation is fragile because it distributes the locking code for a class over multiple classes in an object hierarchy, client-side locking is even more fragile because it entails putting locking code for class <span class="emphasis"><em>C</em></span> into classes that are totally unrelated to <span class="emphasis"><em>C</em></span>. Exercise care when using client-side locking on classes that do not commit to their locking strategy.</p>
+<p>Client-side locking has a lot in common with class extension—they both couple the behavior of the derived class to the implementation of the base class. Just as extension violates encapsulation of implementation [EJ Item 14], client-side locking violates encapsulation of synchronization policy.</p>
+</div>
+<div class="section" title="Composition"><div class="titlepage"><div><div><h3 class="title"><a id="ch04lev2sec12"/>Composition</h3></div></div></div>
+
+<p>There is a less fragile alternative for adding an atomic operation to an existing class: <span class="emphasis"><em>composition</em></span>. <code class="literal">ImprovedList</code> in <a class="link" href="ch04s04.html#ch04list16" title="Example 4.16. Implementing Put-if-absent Using Composition.">Listing 4.16</a> implements the <code class="literal">List</code> operations by delegating them to an underlying <code class="literal">List</code> instance, and adds an atomic <code class="literal">putIfAbsent</code> method. (Like <code class="literal">Collections.synchronizedList</code> and other collections wrappers, <code class="literal">ImprovedList</code> assumes that once a list is passed to its constructor, the client will not use the underlying list directly again, accessing it only through the <code class="literal">ImprovedList</code>.)</p>
+
+<p/><div class="example"><a id="ch04list16"/><p class="title"><b>Example 4.16. Implementing Put-if-absent Using Composition.</b></p><div class="example-contents">
+
+
+<pre class="programlisting">@ThreadSafe
+public class ImprovedList&lt;T&gt; implements List&lt;T&gt; {
+    private final List&lt;T&gt; list;
+
+    public ImprovedList(List&lt;T&gt; list) { this.list = list; }
+
+    public synchronized boolean putIfAbsent(T x) {
+        boolean contains = list.contains(x);
+        if (contains)
+            list.add(x);
+        return !contains;
+    }
+
+    public synchronized void clear() { list.clear(); }
+    // <span class="emphasis"><em>... similarly delegate other List methods</em></span>
+}
+</pre>
+</div></div><br class="example-break"/>
+<p><a id="iddle1966" class="indexterm"/><a id="iddle2008" class="indexterm"/><a id="iddle2122" class="indexterm"/><a id="iddle2131" class="indexterm"/><a id="iddle2899" class="indexterm"/><a id="iddle3490" class="indexterm"/><a id="iddle3892" class="indexterm"/><a id="iddle4564" class="indexterm"/><code class="literal">ImprovedList</code> adds an additional level of locking using its own intrinsic lock. It does not care whether the underlying <code class="literal">List</code> is thread-safe, because it provides its own consistent locking that provides thread safety even if the <code class="literal">List</code> is not thread-safe or changes its locking implementation. While the extra layer of synchronization may add some small performance penalty,<sup>[<a id="ch04fn07" href="#ftn.ch04fn07" class="footnote">7</a>]</sup> the implementation in <code class="literal">ImprovedList</code> is less fragile than attempting to mimic the locking strategy of another object. In effect, we’ve used the Java monitor pattern to encapsulate an existing <code class="literal">List</code>, and this is guaranteed to provide thread safety so long as our class holds the only outstanding reference to the underlying <code class="literal">List</code>.</p>
+</div>
+<div class="footnotes"><br/><hr/><div class="footnote"><p><sup>[<a id="ftn.ch04fn07" href="#ch04fn07" class="para">7</a>] </sup>The penalty will be small because the synchronization on the underlying <code class="literal">List</code> is guaranteed to be uncontended and therefore fast; see <a class="link" href="ch11.html" title="Chapter 11. Performance and Scalability">Chapter 11</a>.</p></div></div></div></body></html>

@@ -1,0 +1,151 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN" "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml"><head><title>Chapter 13. Explicit Locks</title><link rel="stylesheet" href="styles/convert.css" type="text/css"/></head><body><div class="chapter" title="Chapter 13. Explicit Locks"><div class="titlepage"><div><div><h1 class="title"><a id="ch13"/>Chapter 13. Explicit Locks</h1></div></div></div>
+
+
+
+
+<p><a id="iddle1034" class="indexterm"/><a id="iddle1365" class="indexterm"/><a id="iddle1754" class="indexterm"/><a id="iddle2281" class="indexterm"/><a id="iddle2359" class="indexterm"/><a id="iddle2360" class="indexterm"/><a id="iddle2834" class="indexterm"/><a id="iddle3039" class="indexterm"/><a id="iddle3040" class="indexterm"/><a id="iddle3099" class="indexterm"/><a id="iddle3110" class="indexterm"/><a id="iddle3210" class="indexterm"/><a id="iddle3286" class="indexterm"/><a id="iddle3810" class="indexterm"/><a id="iddle3815" class="indexterm"/><a id="iddle4225" class="indexterm"/><a id="iddle4570" class="indexterm"/><a id="iddle5106" class="indexterm"/>Before Java 5.0, the only mechanisms for coordinating access to shared data were <code class="literal">synchronized</code> and <code class="literal">volatile</code>. Java 5.0 adds another option: <code class="literal">ReentrantLock</code>. Contrary to what some have written, <code class="literal">ReentrantLock</code> is not a replacement for intrinsic locking, but rather an alternative with advanced features for when intrinsic locking proves too limited.</p>
+
+
+
+<div class="section" title="Lock and ReentrantLock"><div class="titlepage"><div><div><h2 class="title"><a id="ch13lev1sec1"/>Lock and ReentrantLock</h2></div></div></div>
+
+<p>The <code class="literal">Lock</code> interface, shown in <a class="link" href="ch13.html#ch13list01" title="Example 13.1. Lock Interface.">Listing 13.1</a>, defines a number of abstract locking operations. Unlike intrinsic locking, <code class="literal">Lock</code> offers a choice of unconditional, polled, timed, and interruptible lock acquisition, and all lock and unlock operations are explicit. <code class="literal">Lock</code> implementations must provide the same memory-visibility semantics as intrinsic locks, but can differ in their locking semantics, scheduling algorithms, ordering guarantees, and performance characteristics. (<code class="literal">Lock.newCondition</code> is covered in <a class="link" href="ch14.html" title="Chapter 14. Building Custom Synchronizers">Chapter 14</a>.)</p>
+<div class="example"><a id="ch13list01"/><p class="title"><b>Example 13.1. <code class="literal">Lock</code> Interface.</b></p><div class="example-contents">
+
+<pre class="programlisting">public interface Lock {
+    void lock();
+    void lockInterruptibly() throws InterruptedException;
+    boolean tryLock();
+    boolean tryLock(long timeout, TimeUnit unit)
+        throws InterruptedException;
+    void unlock();
+    Condition newCondition();
+}
+</pre>
+</div></div><br class="example-break"/>
+<p><code class="literal">ReentrantLock</code> implements <code class="literal">Lock</code>, providing the same mutual exclusion and memory-visibility guarantees as <code class="literal">synchronized</code>. Acquiring a <code class="literal">ReentrantLock</code> has the same memory semantics as entering a <code class="literal">synchronized</code> block, and releasing a <code class="literal">ReentrantLock</code> has the same memory semantics as exiting a <code class="literal">synchronized</code> block. <a id="iddle2361" class="indexterm"/><a id="iddle2365" class="indexterm"/><a id="iddle3136" class="indexterm"/><a id="iddle3140" class="indexterm"/><a id="iddle3808" class="indexterm"/><a id="iddle3838" class="indexterm"/><a id="iddle4129" class="indexterm"/>(Memory visibility is covered in <a class="link" href="ch03.html#ch03lev1sec1" title="Visibility">Section 3.1</a> and in <a class="link" href="ch16.html" title="Chapter 16. The Java Memory Model">Chapter 16</a>.) And, like <code class="literal">synchronized</code>, <code class="literal">ReentrantLock</code> offers reentrant locking semantics (see <a class="link" href="ch02s03.html#ch02lev2sec6" title="Reentrancy">Section 2.3.2</a>). <code class="literal">ReentrantLock</code> supports all of the lock-acquisition modes defined by <code class="literal">Lock</code>, providing more flexibility for dealing with lock unavailability than does <code class="literal">synchronized</code>.</p>
+<p>Why create a new locking mechanism that is so similar to intrinsic locking? Intrinsic locking works fine in most situations but has some functional limitations—it is not possible to interrupt a thread waiting to acquire a lock, or to attempt to acquire a lock without being willing to wait for it forever. Intrinsic locks also must be released in the same block of code in which they are acquired; this simplifies coding and interacts nicely with exception handling, but makes non-blockstructured locking disciplines impossible. None of these are reasons to abandon <code class="literal">synchronized</code>, but in some cases a more flexible locking mechanism offers better liveness or performance.</p>
+<p><a class="link" href="ch13.html#ch13list02" title="Example 13.2. Guarding Object State Using ReentrantLock.">Listing 13.2</a> shows the canonical form for using a <code class="literal">Lock</code>. This idiomis somewhat more complicated than using intrinsic locks: the lock <span class="emphasis"><em>must</em></span> be released in a <code class="literal">finally</code> block. Otherwise, the lock would never be released if the guarded code were to throw an exception. When using locking, you must also consider what happens if an exception is thrown out of the <code class="literal">try</code> block; if it is possible for the object to be left in an inconsistent state, additional <code class="literal">try-catch</code> or <code class="literal">try-finally</code> blocks may be needed. (You should always consider the effect of exceptions when using any form of locking, including intrinsic locking.)</p>
+<p>Failing to use <code class="literal">finally</code> to release a <code class="literal">Lock</code> is a ticking time bomb. When it goes off, you will have a hard time tracking down its origin as there will be no record of where or when the <code class="literal">Lock</code> should have been released. This is one reason not to use <code class="literal">ReentrantLock</code> as a blanket substitute for <code class="literal">synchronized</code>: it is more “dangerous” because it doesn’t automatically clean up the lock when control leaves the guarded block. While remembering to release the lock from a <code class="literal">finally</code> block is not all that difficult, it is also not impossible to forget.<sup>[<a id="ch13fn01" href="#ftn.ch13fn01" class="footnote">1</a>]</sup></p>
+<div class="example"><a id="ch13list02"/><p class="title"><b>Example 13.2. Guarding Object State Using <code class="literal">ReentrantLock</code>.</b></p><div class="example-contents">
+
+<pre class="programlisting">Lock lock = new ReentrantLock();
+...
+lock.lock();
+try {
+    <span class="emphasis"><em>// update object state</em></span>
+    <span class="emphasis"><em>// catch exceptions and restore invariants if necessary</em></span>
+} finally {
+    lock.unlock();
+}
+</pre>
+</div></div><br class="example-break"/>
+<div class="section" title="Polled and Timed Lock Acquisition"><div class="titlepage"><div><div><h3 class="title"><a id="ch13lev2sec1"/>Polled and Timed Lock Acquisition</h3></div></div></div>
+
+
+<p><a id="iddle1813" class="indexterm"/><a id="iddle4984" class="indexterm"/><a id="iddle1302" class="indexterm"/><a id="iddle1318" class="indexterm"/><a id="iddle1448" class="indexterm"/><a id="iddle1812" class="indexterm"/><a id="iddle2804" class="indexterm"/><a id="iddle3052" class="indexterm"/><a id="iddle3055" class="indexterm"/><a id="iddle3058" class="indexterm"/><a id="iddle3098" class="indexterm"/><a id="iddle3605" class="indexterm"/><a id="iddle3670" class="indexterm"/><a id="iddle3671" class="indexterm"/><a id="iddle4175" class="indexterm"/><a id="iddle4685" class="indexterm"/><a id="iddle4906" class="indexterm"/>The timed and polled lock-acqusition modes provided by <code class="literal">tryLock</code> allow more sophisticated error recovery than unconditional acquisition. With intrinsic locks, a deadlock is fatal—the only way to recover is to restart the application, and the only defense is to construct your program so that inconsistent lock ordering is impossible. Timed and polled locking offer another option: probabalistic deadlock avoidance.</p>
+<p>Using timed or polled lock acquisition (<code class="literal">tryLock</code>) lets you regain control if you cannot acquire all the required locks, release the ones you did acquire, and try again (or at least log the failure and do something else). <a class="link" href="ch13.html#ch13list03" title="Example 13.3. Avoiding Lock-ordering Deadlock Using Trylock.">Listing 13.3</a> shows an alternate way of addressing the dynamic ordering deadlock from <a class="link" href="ch10.html#ch10lev2sec2" title="Dynamic Lock Order Deadlocks">Section 10.1.2</a>: use <code class="literal">tryLock</code> to attempt to acquire both locks, but back off and retry if they cannot both be acquired. The sleep time has a fixed component and a random component to reduce the likelihood of livelock. If the locks cannot be acquired within the specified time, <code class="literal">transferMoney</code> returns a failure status so that the operation can fail gracefully. (See [CPJ 2.5.1.2] and [CPJ 2.5.1.3] for more examples of using polled locks for deadlock avoidance.)</p>
+<p>Timed locks are also useful in implementing activities that manage a time budget (see <a class="link" href="ch06s03.html#ch06lev2sec15" title="Placing Time Limits on Tasks">Section 6.3.7</a>). When an activity with a time budget calls a blocking method, it can supply a timeout corresponding to the remaining time in the budget. This lets activities terminate early if they cannot deliver a result within the desired time. With intrinsic locks, there is no way to cancel a lock acquisition once it is started, so intrinsic locks put the ability to implement time-budgeted activities at risk.</p>
+<p>The travel portal example in <a class="link" href="ch06s04.html#ch06list17" title="Example 6.17. Requesting Travel Quotes Under a Time Budget.">Listing 6.17</a> on page <a class="link" href="ch06s04.html#ch06list17" title="Example 6.17. Requesting Travel Quotes Under a Time Budget.">134</a> creates a separate task for each car-rental company from which it was soliciting bids. Soliciting a bid probably involves some sort of network-based request mechanism, such as a web service request. But soliciting a bid might also require exclusive access to a scarce resource, such as a direct communications line to the company.</p>
+<p>We saw one way to ensure serialized access to a resource in <a class="link" href="ch09s05.html" title="Other Forms of Single-threaded Subsystems">Section 9.5</a>: a single-threaded executor. Another approach is to use an exclusive lock to guard access to the resource. The code in <a class="link" href="ch13.html#ch13list04" title="Example 13.4. Locking with a Time Budget.">Listing 13.4</a> tries to send a message on a shared communications line guarded by a <code class="literal">Lock</code>, but fails gracefully if it cannot do so within its time budget. The timed <code class="literal">tryLock</code> makes it practical to incorporate exclusive locking into such a time-limited activity.</p>
+</div>
+<div class="section" title="Interruptible Lock Acquisition"><div class="titlepage"><div><div><h3 class="title"><a id="ch13lev2sec2"/>Interruptible Lock Acquisition</h3></div></div></div>
+
+<p>Just as timed lock acquisition allows exclusive locking to be used within timelimited activities, interruptible lock acquisition allows locking to be used within cancellable activities. <a class="link" href="ch07.html#ch07lev2sec6" title="Dealing with Non-interruptible Blocking">Section 7.1.6</a> identified several mechanisms, such as acquiring an intrinsic lock, that are not responsive to interruption. These noninterruptible blocking mechanisms complicate the implementation of cancellable tasks. The <code class="literal">lockInterruptibly</code> method allows you to try to acquire a lock while remaining responsive to interruption, and its inclusion in <code class="literal">Lock</code> avoids creating another category of non-interruptible blocking mechanisms.</p>
+
+<p/><div class="example"><a id="ch13list03"/><p class="title"><b>Example 13.3. Avoiding Lock-ordering Deadlock Using <code class="literal">Trylock</code>.</b></p><div class="example-contents">
+
+
+<pre class="programlisting">public boolean transferMoney(Account fromAcct,
+                             Account toAcct,
+                             DollarAmount amount,
+                             long timeout,
+                             TimeUnit unit)
+        throws InsufficientFundsException, InterruptedException {
+    long fixedDelay = getFixedDelayComponentNanos(timeout, unit);
+    long randMod = getRandomDelayModulusNanos(timeout, unit);
+    long stopTime = System.nanoTime() + unit.toNanos(timeout);
+
+    while (true) {
+        if (fromAcct.lock.tryLock()) {
+            try {
+                if (toAcct.lock.tryLock()) {
+                    try {
+                        if (fromAcct.getBalance().compareTo(amount)
+                                &lt; 0)
+                            throw new InsufficientFundsException();
+                        else {
+                            fromAcct.debit(amount);
+                            toAcct.credit(amount);
+                            return true;
+                        }
+                    } finally {
+                        toAcct.lock.unlock();
+                    }
+                 }
+             } finally {
+                 fromAcct.lock.unlock();
+             }
+         }
+         if (System.nanoTime() &gt; stopTime)
+             return false;
+         NANOSECONDS.sleep(fixedDelay + rnd.nextLong() % randMod);
+     }
+}
+</pre>
+</div></div><br class="example-break"/>
+
+<p/><div class="example"><a id="ch13list04"/><p class="title"><b>Example 13.4. Locking with a Time Budget.</b></p><div class="example-contents">
+
+
+<pre class="programlisting">public boolean trySendOnSharedLine(String message,
+                                   long timeout, TimeUnit unit)
+                                   throws InterruptedException {
+    long nanosToLock = unit.toNanos(timeout)
+                     - estimatedNanosToSend(message);
+    if (!lock.tryLock(nanosToLock, NANOSECONDS))
+        return false;
+    try {
+        return sendOnSharedLine(message);
+    } finally {
+        lock.unlock();
+    }
+}
+</pre>
+</div></div><br class="example-break"/>
+<p><a id="iddle1303" class="indexterm"/><a id="iddle3120" class="indexterm"/><a id="iddle4157" class="indexterm"/><a id="iddle4985" class="indexterm"/>The canonical structure of interruptible lock acquisition is slightly more complicated than normal lock acquisition, as two <code class="literal">try</code> blocks are needed. (If the interruptible lock acquisition can throw <code class="literal">InterruptedException</code>, the standard <code class="literal">try-finally</code> locking idiom works.) <a class="link" href="ch13.html#ch13list05" title="Example 13.5. Interruptible Lock Acquisition.">Listing 13.5</a> uses <code class="literal">lockInterruptibly</code> to implement <code class="literal">sendOnSharedLine</code> from <a class="link" href="ch13.html#ch13list04" title="Example 13.4. Locking with a Time Budget.">Listing 13.4</a> so that we can call it from a cancellable task. The timed <code class="literal">tryLock</code> is also responsive to interruption and so can be used when you need both timed and interruptible lock acquisition.</p>
+<div class="example"><a id="ch13list05"/><p class="title"><b>Example 13.5. Interruptible Lock Acquisition.</b></p><div class="example-contents">
+
+<pre class="programlisting">public boolean sendOnSharedLine(String message)
+        throws InterruptedException {
+    lock.lockInterruptibly();
+    try {
+        return cancellableSendOnSharedLine(message);
+    } finally {
+        lock.unlock();
+    }
+}
+
+private boolean cancellableSendOnSharedLine(String message)
+    throws InterruptedException { ... }
+</pre>
+</div></div><br class="example-break"/>
+</div>
+<div class="section" title="Non-block-structured Locking"><div class="titlepage"><div><div><h3 class="title"><a id="ch13lev2sec3"/>Non-block-structured Locking</h3></div></div></div>
+
+<p>With intrinsic locks, acquire-release pairs are block-structured—a lock is always released in the same basic block in which it was acquired, regardless of how control exits the block. Automatic lock release simplifies analysis and prevents potential coding errors, but sometimes a more flexible locking discipline is needed.</p>
+<p><a id="iddle1449" class="indexterm"/><a id="iddle1587" class="indexterm"/><a id="iddle1588" class="indexterm"/><a id="iddle2611" class="indexterm"/><a id="iddle2838" class="indexterm"/><a id="iddle3084" class="indexterm"/><a id="iddle3104" class="indexterm"/><a id="iddle3115" class="indexterm"/><a id="iddle3138" class="indexterm"/><a id="iddle3139" class="indexterm"/><a id="iddle3521" class="indexterm"/><a id="iddle3813" class="indexterm"/><a id="iddle3814" class="indexterm"/><a id="iddle3836" class="indexterm"/><a id="iddle3837" class="indexterm"/><a id="iddle4069" class="indexterm"/><a id="iddle4070" class="indexterm"/>In <a class="link" href="ch11.html" title="Chapter 11. Performance and Scalability">Chapter 11</a>, we saw how reducing lock granularity can enhance scalability. Lock striping allows different hash chains in a hash-based collection to use different locks. We can apply a similar principle to reduce locking granularity in a linked list by using a separate lock for <span class="emphasis"><em>each link node</em></span>, allowing different threads to operate independently on different portions of the list. The lock for a given node guards the link pointers and the data stored in that node, so when traversing or modifying the list we must hold the lock on one node until we acquire the lock on the next node; only then can we release the lock on the first node. An example of this technique, called <span class="emphasis"><em>hand-over-hand locking</em></span> or <span class="emphasis"><em>lock coupling</em></span>, appears in [CPJ 2.5.1.4].</p>
+</div>
+</div>
+
+
+
+
+
+
+
+
+
+<div class="footnotes"><br/><hr/><div class="footnote"><p><sup>[<a id="ftn.ch13fn01" href="#ch13fn01" class="para">1</a>] </sup>FindBugs has an “unreleased lock” detector identifying when a <code class="literal">Lock</code> is not released in all code paths out of the block in which it was acquired.</p></div></div></div></body></html>

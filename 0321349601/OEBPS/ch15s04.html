@@ -1,0 +1,150 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN" "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml"><head><title>Nonblocking Algorithms</title><link rel="stylesheet" href="styles/convert.css" type="text/css"/></head><body><div class="section" title="Nonblocking Algorithms"><div class="titlepage"><div><div><h2 class="title"><a id="ch15lev1sec4"/>Nonblocking Algorithms</h2></div></div></div>
+
+<p>Lock-based algorithms are at risk for a number of liveness failures. If a thread holding a lock is delayed due to blocking I/O, page fault, or other delay, it is possible that no thread will make progress. An algorithm is called <span class="emphasis"><em>nonblocking</em></span> if failure or suspension of any thread cannot cause failure or suspension of another thread; an algorithm is called <span class="emphasis"><em>lock-free</em></span> if, at each step, <span class="emphasis"><em>some</em></span> thread can make progress. Algorithms that use CAS exclusively for coordination between threads can, if constructed correctly, be both nonblocking and lock-free. An uncontended CAS always succeeds, and if multiple threads contend for a CAS, one always wins and therefore makes progress. Nonblocking algorithms are also immune to deadlock or priority inversion (though they can exhibit starvation or livelock because they can involve repeated retries). We’ve seen one nonblocking algorithm so far: <code class="literal">CasCounter</code>. Good nonblocking algorithms are known for many common data structures, including stacks, queues, priority queues, and hash tables—though <a id="iddle2992" class="indexterm"/><a id="iddle4359" class="indexterm"/>designing new ones is a task best left to experts.</p>
+<div class="section" title="A Nonblocking Stack"><div class="titlepage"><div><div><h3 class="title"><a id="ch15lev2sec6"/>A Nonblocking Stack</h3></div></div></div>
+
+<p>Nonblocking algorithms are considerably more complicated than their lock-based equivalents. The key to creating nonblocking algorithms is figuring out how to limit the scope of atomic changes to a <span class="emphasis"><em>single</em></span> variable while maintaining data consistency. In linked collection classes such as queues, you can sometimes get away with expressing state transformations as changes to individual links and using an <code class="literal">AtomicReference</code> to represent each link that must be updated atomically.</p>
+<p>Stacks are the simplest linked data structure: each element refers to only one other element and each element is referred to by only one object reference. <code class="literal">ConcurrentStack</code> in <a class="link" href="ch15s04.html#ch15list06" title="Example 15.6. Nonblocking Stack Using Treiber’s Algorithm (Treiber, 1986).">Listing 15.6</a> shows how to construct a stack using atomic references. The stack is a linked list of <code class="literal">Node</code> elements, rooted at <code class="literal">top</code>, each of which contains a value and a link to the next element. The <code class="literal">push</code> method prepares a new link node whose <code class="literal">next</code> field refers to the current top of the stack, and then uses CAS to try to install it on the top of the stack. If the same node is still on the top of the stack as when we started, the CAS succeeds; if the top node has changed (because another thread has added or removed elements since we started), the CAS fails and <code class="literal">push</code> updates the new node based on the current stack state and tries again. In either case, the stack is still in a consistent state after the CAS.</p>
+<p><code class="literal">CasCounter</code> and <code class="literal">ConcurrentStack</code> illustrate characteristics of all nonblocking algorithms: some work is done speculatively and may have to be redone. In <code class="literal">ConcurrentStack</code>, when we construct the <code class="literal">Node</code> representing the new element, we are hoping that the value of the <code class="literal">next</code> reference will still be correct by the time it is installed on the stack, but are prepared to retry in the event of contention.</p>
+<p>Nonblocking algorithms like <code class="literal">ConcurrentStack</code> derive their thread safety from the fact that, like locking, <code class="literal">compareAndSet</code> provides both atomicity and visibility guarantees. When a thread changes the state of the stack, it does so with a <code class="literal">compareAndSet</code>, which has the memory effects of a volatile write. When a thread examines the stack, it does so by calling <code class="literal">get</code> on the same <code class="literal">AtomicReference</code>, which has the memory effects of a volatile read. So any changes made by one thread are safely published to any other thread that examines the state of the list. And the list is modified with a <code class="literal">compareAndSet</code> that atomically either updates the <code class="literal">top</code> reference or fails if it detects interference from another thread.</p>
+</div>
+<div class="section" title="A Nonblocking Linked List"><div class="titlepage"><div><div><h3 class="title"><a id="ch15lev2sec7"/>A Nonblocking Linked List</h3></div></div></div>
+
+<p>The two nonblocking algorithms we’ve seen so far, the counter and the stack, illustrate the basic pattern of using CAS to update a value speculatively, retrying if the update fails. The trick to building nonblocking algorithms is to limit the scope of atomic changes to a single variable. With counters this is trivial, and with a stack it is straightforward enough, but for more complicated data structures such as queues, hash tables, or trees, it can get a lot trickier.</p>
+<p>A linked queue is more complicated than a stack because it must support fast access to both the head and the tail. To do this, it maintains separate head and tail pointers. Two pointers refer to the node at the tail: the <code class="literal">next</code> pointer of the current <a id="iddle1064" class="indexterm"/><a id="iddle1065" class="indexterm"/><a id="iddle2100" class="indexterm"/><a id="iddle4973" class="indexterm"/><a id="iddle1053" class="indexterm"/><a id="iddle2991" class="indexterm"/><a id="iddle3212" class="indexterm"/>last element, and the tail pointer. To insert a new element successfully, both of these pointers must be updated—atomically. At first glance, this cannot be done with atomic variables; separate CAS operations are required to update the two pointers, and if the first succeeds but the second one fails the queue is left in an inconsistent state. And, even if both operations succeed, another thread could try to access the queue between the first and the second. Building a nonblocking algorithm for a linked queue requires a plan for both these situations.</p>
+<div class="example"><a id="ch15list06"/><p class="title"><b>Example 15.6. Nonblocking Stack Using Treiber’s Algorithm (<a class="link" href="bi01.html#biblio01_031" title="Systems Programming: Coping with Parallelism. Technical Report RJ 5118">Treiber, 1986</a>).</b></p><div class="example-contents">
+
+
+<pre class="programlisting">@ThreadSafe
+public class ConcurrentStack &lt;E&gt; {
+    AtomicReference&lt;Node&lt;E&gt;&gt; top = new AtomicReference&lt;Node&lt;E&gt;&gt;();
+
+    public void push(E item) {
+        Node&lt;E&gt; newHead = new Node&lt;E&gt;(item);
+        Node&lt;E&gt; oldHead;
+        do {
+            oldHead = top.get();
+            newHead.next = oldHead;
+        } while (!top.compareAndSet(oldHead, newHead));
+    }
+
+    public E pop() {
+        Node&lt;E&gt; oldHead;
+        Node&lt;E&gt; newHead;
+        do {
+            oldHead = top.get();
+            if (oldHead == null)
+                return null;
+            newHead = oldHead.next;
+        } while (!top.compareAndSet(oldHead, newHead));
+        return oldHead.item;
+    }
+
+    private static class Node &lt;E&gt; {
+        public final E item;
+        public Node&lt;E&gt; next;
+
+        public Node(E item) {
+            this.item = item;
+        }
+    }
+}
+</pre>
+</div></div><br class="example-break"/>
+<p>We need several tricks to develop this plan. The first is to ensure that the data structure is always in a consistent state, even in the middle of an multi-step update. That way, if thread <span class="emphasis"><em>A</em></span> is in the middle of a update when thread <span class="emphasis"><em>B</em></span> arrives on the scene, <span class="emphasis"><em>B</em></span> can tell that an operation has been partially completed and knows not to try immediately to apply its own update. Then <span class="emphasis"><em>B</em></span> can wait (by repeatedly examining the queue state) until <span class="emphasis"><em>A</em></span> finishes, so that the two don’t get in each other’s way.</p>
+<p>While this trick by itself would suffice to let threads “take turns” accessing the data structure without corrupting it, if one thread failed in the middle of an update, no thread would be able to access the queue at all. To make the algorithm nonblocking, we must ensure that the failure of a thread does not prevent other threads from making progress. Thus, the second trick is to make sure that if <span class="emphasis"><em>B</em></span> arrives to find the data structure in the middle of an update by <span class="emphasis"><em>A</em></span>, enough information is already embodied in the data structure for <span class="emphasis"><em>B</em></span> to <span class="emphasis"><em>finish the update for A</em></span>. If <span class="emphasis"><em>B</em></span> “helps” <span class="emphasis"><em>A</em></span> by finishing <span class="emphasis"><em>A</em></span>’s operation, <span class="emphasis"><em>B</em></span> can proceed with its own operation without waiting for <span class="emphasis"><em>A</em></span>. When <span class="emphasis"><em>A</em></span> gets around to finishing its operation, it will find that <span class="emphasis"><em>B</em></span> already did the job for it.</p>
+<p><code class="literal">LinkedQueue</code> in <a class="link" href="ch15s04.html#ch15list07" title="Example 15.7. Insertion in the Michael-Scott Nonblocking Queue Algorithm (Michael and Scott, 1996).">Listing 15.7</a> shows the insertion portion of the Michael-Scott nonblocking linked-queue algorithm (<a class="link" href="bi01.html#biblio01_026">Michael and Scott, 1996</a>), which is used by <code class="literal">ConcurrentLinkedQueue</code>. As in many queue algorithms, an empty queue consists of a “sentinel” or “dummy” node, and the head and tail pointers are initialized to refer to the sentinel. The tail pointer always refers to the sentinel (if the queue is empty), the last element in the queue, or (in the case that an operation is in mid-update) the second-to-last element. <a class="link" href="ch15s04.html#ch15fig03" title="Figure 15.3. Queue with Two Elements in Quiescent State.">Figure 15.3</a> illustrates a queue with two elements in the normal, or <span class="emphasis"><em>quiescent</em></span>, state.</p>
+<div class="figure-float"><div class="figure"><a id="ch15fig03"/><p class="title"><b>Figure 15.3. Queue with Two Elements in Quiescent State.</b></p><div class="figure-contents">
+
+
+<div class="mediaobject"><img src="graphics/15fig03.gif" height="140" alt="Queue with Two Elements in Quiescent State."/></div>
+</div></div><br class="figure-break"/></div>
+<p>Inserting a new element involves updating two pointers. The first links the new node to the end of the list by updating the <code class="literal">next</code> pointer of the current last element; the second swings the tail pointer around to point to the new last element. Between these two operations, the queue is in the <span class="emphasis"><em>intermediate</em></span> state, shown in <a class="link" href="ch15s04.html#ch15fig04" title="Figure 15.4. Queue in Intermediate State During Insertion.">Figure 15.4</a>. After the second update, the queue is again in the quiescent state, shown in <a class="link" href="ch15s04.html#ch15fig05" title="Figure 15.5. Queue Again in Quiescent State After Insertion is Complete.">Figure 15.5</a>.</p>
+<div class="figure-float"><div class="figure"><a id="ch15fig04"/><p class="title"><b>Figure 15.4. Queue in Intermediate State During Insertion.</b></p><div class="figure-contents">
+
+
+<div class="mediaobject"><img src="graphics/15fig04.gif" height="134" alt="Queue in Intermediate State During Insertion."/></div>
+</div></div><br class="figure-break"/></div>
+<div class="figure-float"><div class="figure"><a id="ch15fig05"/><p class="title"><b>Figure 15.5. Queue Again in Quiescent State After Insertion is Complete.</b></p><div class="figure-contents">
+
+
+<div class="mediaobject"><img src="graphics/15fig05.gif" height="131" alt="Queue Again in Quiescent State After Insertion is Complete."/></div>
+</div></div><br class="figure-break"/></div>
+<p>The key observation that enables both of the required tricks is that if the queue is in the quiescent state, the <code class="literal">next</code> field of the link node pointed to by <code class="literal">tail</code> is null, and if it is in the intermediate state, <code class="literal">tail.next</code> is non-null. So any thread can immediately tell the state of the queue by examining <code class="literal">tail.next</code>. Further, if the queue is in the intermediate state, it can be restored to the quiescent state by advancing the tail pointer forward one node, finishing the operation for whichever thread is in the middle of inserting an element.<sup>[<a id="ch15fn07" href="#ftn.ch15fn07" class="footnote">7</a>]</sup></p>
+<p><code class="literal">LinkedQueue.put</code> first checks to see if the queue is in the intermediate state before attempting to insert a new element (step <span class="emphasis"><em>A</em></span>). If it is, then some other thread is already in the process of inserting an element (between its steps <span class="emphasis"><em>C</em></span> and <span class="emphasis"><em>D</em></span>). Rather than wait for that thread to finish, the current thread helps it by finishing the operation for it, advancing the tail pointer (step <span class="emphasis"><em>B</em></span>). It then repeats this check in case another thread has started inserting a new element, advancing the tail pointer until it finds the queue in the quiescent state so it can begin its own insertion.</p>
+<p>The CAS at step <span class="emphasis"><em>C</em></span>, which links the new node at the tail of the queue, could fail if two threads try to insert an element at the same time. In that case, no harm is done: no changes have been made, and the current thread can just reload the tail pointer and try again. Once <span class="emphasis"><em>C</em></span> succeeds, the insertion is considered to have <a id="iddle2129" class="indexterm"/><a id="iddle1157" class="indexterm"/><a id="iddle1176" class="indexterm"/><a id="iddle1485" class="indexterm"/><a id="iddle2338" class="indexterm"/><a id="iddle2339" class="indexterm"/><a id="iddle3823" class="indexterm"/><a id="iddle3824" class="indexterm"/><a id="iddle5015" class="indexterm"/><a id="iddle5090" class="indexterm"/><a id="iddle5091" class="indexterm"/>taken effect; the second CAS (step <span class="emphasis"><em>D</em></span>) is considered “cleanup”, since it can be performed either by the inserting thread or by any other thread. If <span class="emphasis"><em>D</em></span> fails, the inserting thread returns anyway rather than retrying the CAS, because no retry is needed—another thread has already finished the job in its step <span class="emphasis"><em>B</em></span>! This works because before any thread tries to link a new node into the queue, it first checks to see if the queue needs cleaning up by checking if <code class="literal">tail.next</code> is non-null. If it is, it advances the tail pointer first (perhaps multiple times) until the queue is in the quiescent state.</p>
+<div class="example"><a id="ch15list07"/><p class="title"><b>Example 15.7. Insertion in the Michael-Scott Nonblocking Queue Algorithm (<a class="link" href="bi01.html#biblio01_026">Michael and Scott, 1996</a>).</b></p><div class="example-contents">
+
+
+<pre class="programlisting">@ThreadSafe
+public class LinkedQueue &lt;E&gt; {
+    private static class Node &lt;E&gt; {
+        final E item;
+        final AtomicReference&lt;Node&lt;E&gt;&gt; next;
+
+        public Node(E item, Node&lt;E&gt; next) {
+            this.item = item;
+            this.next = new AtomicReference&lt;Node&lt;E&gt;&gt;(next);
+        }
+    }
+
+    private final Node&lt;E&gt; dummy = new Node&lt;E&gt;(null, null);
+    private final AtomicReference&lt;Node&lt;E&gt;&gt; head
+            = new AtomicReference&lt;Node&lt;E&gt;&gt;(dummy);
+    private final AtomicReference&lt;Node&lt;E&gt;&gt; tail
+            = new AtomicReference&lt;Node&lt;E&gt;&gt;(dummy);
+
+    public boolean put(E item) {
+        Node&lt;E&gt; newNode = new Node&lt;E&gt;(item, null);
+        while (true) {
+            Node&lt;E&gt; curTail = tail.get();
+            Node&lt;E&gt; tailNext = curTail.next.get();
+            if (curTail == tail.get()) {
+                if (tailNext != null) {                     <img src="graphics/a.gif" width="25" alt="Insertion in the Michael-Scott Nonblocking Queue Algorithm (Michael and Scott, 1996)."/>
+                    // <span class="emphasis"><em>Queue in intermediate state, advance tail</em></span>
+                    tail.compareAndSet(curTail, tailNext);   <img src="graphics/b.gif" width="25" alt="Insertion in the Michael-Scott Nonblocking Queue Algorithm (Michael and Scott, 1996)."/>
+                } else {
+                    // <span class="emphasis"><em>In quiescent state, try inserting new node</em></span>
+                    if (curTail.next.compareAndSet(null, newNode)) { <img src="graphics/c.gif" width="25" alt="Insertion in the Michael-Scott Nonblocking Queue Algorithm (Michael and Scott, 1996)."/>
+                        // <span class="emphasis"><em>Insertion succeeded, try advancing tail</em></span>
+                        tail.compareAndSet(curTail, newNode);        <img src="graphics/d.gif" width="25" alt="Insertion in the Michael-Scott Nonblocking Queue Algorithm (Michael and Scott, 1996)."/>
+                        return true;
+                   }
+                }
+            }
+        }
+    }
+}
+</pre>
+</div></div><br class="example-break"/>
+</div>
+<div class="section" title="Atomic Field Updaters"><div class="titlepage"><div><div><h3 class="title"><a id="ch15lev2sec8"/>Atomic Field Updaters</h3></div></div></div>
+
+<p><a class="link" href="ch15s04.html#ch15list07" title="Example 15.7. Insertion in the Michael-Scott Nonblocking Queue Algorithm (Michael and Scott, 1996).">Listing 15.7</a> illustrates the algorithm used by <code class="literal">ConcurrentLinkedQueue</code>, but the actual implementation is a bit different. Instead of representing each <code class="literal">Node</code> with an atomic reference, <code class="literal">ConcurrentLinkedQueue</code> uses an ordinary volatile reference and updates it through the reflection-based <code class="literal">AtomicReferenceFieldUpdater</code>, as shown in <a class="link" href="ch15s04.html#ch15list08" title="Example 15.8. Using Atomic Field Updaters in ConcurrentLinkedQueue.">Listing 15.8</a>.</p>
+<div class="example"><a id="ch15list08"/><p class="title"><b>Example 15.8. Using Atomic Field Updaters in <code class="literal">ConcurrentLinkedQueue</code>.</b></p><div class="example-contents">
+
+<pre class="programlisting">private class Node&lt;E&gt; {
+    private final E item;
+    private volatile Node&lt;E&gt; next;
+
+    public Node(E item) {
+        this.item = item;
+    }
+}
+
+private static AtomicReferenceFieldUpdater&lt;Node, Node&gt; nextUpdater
+        = AtomicReferenceFieldUpdater.newUpdater(
+                Node.class, Node.class, "next");
+</pre>
+</div></div><br class="example-break"/>
+<p>The atomic field updater classes (available in <code class="literal">Integer</code>, <code class="literal">Long</code>, and <code class="literal">Reference</code> versions) represent a reflection-based “view” of an existing volatile field so that CAS can be used on existing volatile fields. The updater classes have no constructors; to create one, you call the <code class="literal">newUpdater</code> factory method, specifying the class and field name. The field updater classes are not tied to a specific instance; one can be used to update the target field for any instance of the target class. The atomicity guarantees for the updater classes are weaker than for the regular atomic classes because you cannot guarantee that the underlying fields will not be modified directly—the <code class="literal">compareAndSet</code> and arithmetic methods guarantee atomicity only with respect to other threads using the atomic field updater methods.</p>
+<p>In <code class="literal">ConcurrentLinkedQueue</code>, updates to the <code class="literal">next</code> field of a <code class="literal">Node</code> are applied using the <code class="literal">compareAndSet</code> method of <code class="literal">nextUpdater</code>. This somewhat circuitous approach is used entirely for performance reasons. For frequently allocated, short-lived objects like queue link nodes, eliminating the creation of an <code class="literal">AtomicReference</code> for each <code class="literal">Node</code> is significant enough to reduce the cost of insertion operations. <a id="iddle1003" class="indexterm"/>However, in nearly all situations, ordinary atomic variables perform just fine—in only a few cases will the atomic field updaters be needed. (The atomic field updaters are also useful when you want to perform atomic updates while preserving the serialized form of an existing class.)</p>
+</div>
+<div class="section" title="The ABA Problem"><div class="titlepage"><div><div><h3 class="title"><a id="ch15lev2sec9"/>The ABA Problem</h3></div></div></div>
+
+<p>The <span class="emphasis"><em>ABA problem</em></span> is an anomaly that can arise from the naive use of compare-and-swap in algorithms where nodes can be recycled (primarily in environments without garbage collection). A CAS effectively asks “Is the value of <span class="emphasis"><em>V</em></span> still <span class="emphasis"><em>A</em></span>?”, and proceeds with the update if so. In most situations, including the examples presented in this chapter, this is entirely sufficient. However, sometimes we really want to ask “Has the value of <span class="emphasis"><em>V</em></span> changed since I last observed it to be <span class="emphasis"><em>A</em></span>?” For some algorithms, changing <span class="emphasis"><em>V</em></span> from <span class="emphasis"><em>A</em></span> to <span class="emphasis"><em>B</em></span> and then back to <span class="emphasis"><em>A</em></span> still counts as a change that requires us to retry some algorithmic step.</p>
+<p>This <span class="emphasis"><em>ABA problem</em></span> can arise in algorithms that do their own memory management for link node objects. In this case, that the head of a list still refers to a previously observed node is not enough to imply that the contents of the list have not changed. If you cannot avoid the ABA problem by letting the garbage collector manage link nodes for you, there is still a relatively simple solution: instead of updating the value of a reference, update a <span class="emphasis"><em>pair</em></span> of values, a reference and a version number. Even if the value changes from <span class="emphasis"><em>A</em></span> to <span class="emphasis"><em>B</em></span> and back to <span class="emphasis"><em>A</em></span>, the version numbers will be different. <code class="literal">AtomicStampedReference</code> (and its cousin <code class="literal">AtomicMarkableReference</code>) provide atomic conditional update on a pair of variables. <code class="literal">AtomicStampedReference</code> updates an object reference-integer pair, allowing “versioned” references that are immune<sup>[<a id="ch15fn08" href="#ftn.ch15fn08" class="footnote">8</a>]</sup> to the ABA problem. Similarly, <code class="literal">AtomicMarkableReference</code> updates an object reference-boolean pair that is used by some algorithms to let a node remain in a list while being marked as deleted.<sup>[<a id="ch15fn09" href="#ftn.ch15fn09" class="footnote">9</a>]</sup></p>
+</div>
+<div class="footnotes"><br/><hr/><div class="footnote"><p><sup>[<a id="ftn.ch15fn07" href="#ch15fn07" class="para">7</a>] </sup>For a full account of the correctness of this algorithm, see (<a class="link" href="bi01.html#biblio01_026">Michael and Scott, 1996</a>) or (<a class="link" href="bi01.html#biblio01_017">Herlihy and Shavit, 2006</a>).</p></div><div class="footnote"><p><sup>[<a id="ftn.ch15fn08" href="#ch15fn08" class="para">8</a>] </sup>In practice, anyway; theoretically the counter could wrap.</p></div><div class="footnote"><p><sup>[<a id="ftn.ch15fn09" href="#ch15fn09" class="para">9</a>] </sup>Many processors provide a double-wide CAS (CAS2 or CASX) operation that can operate on a pointer-integer pair, which would make this operation reasonably efficient. As of Java 6, <code class="literal">Atomic-StampedReference</code> does not use double-wide CAS even on platforms that support it. (Double-wide CAS differs from DCAS, which operates on two unrelated memory locations; as of this writing, no current processor implements DCAS.)</p></div></div></div></body></html>

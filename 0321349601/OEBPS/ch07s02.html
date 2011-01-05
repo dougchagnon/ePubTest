@@ -1,0 +1,379 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN" "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml"><head><title>Stopping a Thread-based Service</title><link rel="stylesheet" href="styles/convert.css" type="text/css"/></head><body><div class="section" title="Stopping a Thread-based Service"><div class="titlepage"><div><div><h2 class="title"><a id="ch07lev1sec2"/>Stopping a Thread-based Service</h2></div></div></div>
+
+<p>Applications commonly create services that own threads, such as thread pools, and the lifetime of these services is usually longer than that of the method that creates them. If the application is to shut down gracefully, the threads owned by these services need to be terminated. Since there is no preemptive way to stop a thread, they must instead be persuaded to shut down on their own.</p>
+<p>Sensible encapsulation practices dictate that you should not manipulate a thread—interrupt it, modify its priority, etc.—unless you own it. The thread API has no formal concept of thread ownership: a thread is represented with a <code class="literal">Thread</code> object that can be freely shared like any other object. However, it makes sense to think of a thread as having an owner, and this is usually the class that created the thread. So a thread pool owns its worker threads, and if those threads need to be interrupted, the thread pool should take care of it.</p>
+<p>As with any other encapsulated object, thread ownership is not transitive: the application may own the service and the service may own the worker threads, but the application doesn’t own the worker threads and therefore should not attempt to stop them directly. Instead, the service should provide <span class="emphasis"><em>lifecycle methods</em></span> for shutting itself down that also shut down the owned threads; then the application can shut down the service, and the service can shut down the threads. <code class="literal">ExecutorService</code> provides the <code class="literal">shutdown</code> and <code class="literal">shutdownNow</code> methods; other thread-owning services should provide a similar shutdown mechanism.</p>
+<div class="sidebar"><a id="ch07sb07"/><p class="title"><b/></p>
+<p>Provide lifecycle methods whenever a thread-owning service has a lifetime longer than that of the method that created it.</p>
+</div>
+<div class="section" title="Example: A Logging Service"><div class="titlepage"><div><div><h3 class="title"><a id="ch07lev2sec8"/>Example: A Logging Service</h3></div></div></div>
+
+<p>Most server applications use logging, which can be as simple as inserting <code class="literal">println</code> statements into the code. Stream classes like <code class="literal">PrintWriter</code> are thread-safe, so this simple approach would require no explicit synchronization.<sup>[<a id="ch07fn03" href="#ftn.ch07fn03" class="footnote">3</a>]</sup> However, as <a id="iddle2094" class="indexterm"/><a id="iddle2183" class="indexterm"/><a id="iddle2438" class="indexterm"/><a id="iddle2134" class="indexterm"/><a id="iddle2921" class="indexterm"/>we’ll see in <a class="link" href="ch11s06.html" title="Reducing Context Switch Overhead">Section 11.6</a>, inline logging can have some performance costs in highvolume applications. Another alternative is have the <code class="literal">log</code> call queue the log message for processing by another thread.</p>
+<div class="example"><a id="ch07list12"/><p class="title"><b>Example 7.12. Encapsulating Nonstandard Cancellation in a Task with <code class="literal">Newtaskfor</code>.</b></p><div class="example-contents">
+
+
+<pre class="programlisting">public interface CancellableTask&lt;T&gt; extends Callable&lt;T&gt; {
+    void cancel();
+    RunnableFuture&lt;T&gt; newTask();
+}
+
+@ThreadSafe
+public class CancellingExecutor extends ThreadPoolExecutor {
+    ...
+    protected&lt;T&gt; RunnableFuture&lt;T&gt; newTaskFor(Callable&lt;T&gt; callable) {
+        if (callable instanceof CancellableTask)
+            return ((CancellableTask&lt;T&gt;) callable).newTask();
+        else
+            return super.newTaskFor(callable);
+    }
+}
+
+public abstract class SocketUsingTask&lt;T&gt;
+        implements CancellableTask&lt;T&gt; {
+    @GuardedBy("this") private Socket socket;
+
+    protected synchronized void setSocket(Socket s) { socket = s; }
+
+    public synchronized void cancel() {
+        try {
+            if (socket != null)
+                socket.close();
+        } catch (IOException ignored) { }
+    }
+
+    public RunnableFuture&lt;T&gt; newTask() {
+        return new FutureTask&lt;T&gt;(this) {
+            public boolean cancel(boolean mayInterruptIfRunning) {
+                try {
+                    SocketUsingTask.this.cancel();
+                } finally {
+                    return super.cancel(mayInterruptIfRunning);
+                }
+            }
+        };
+    }
+}
+</pre>
+</div></div><br class="example-break"/>
+<p><code class="literal">LogWriter</code> in <a class="link" href="ch07s02.html#ch07list13" title="Example 7.13. Producer-Consumer Logging Service with No Shutdown Support.">Listing 7.13</a> shows a simple logging service in which the logging activity is moved to a separate logger thread. Instead of having the thread that produces the message write it directly to the output stream, <code class="literal">LogWriter</code> hands it off to the logger thread via a <code class="literal">BlockingQueue</code> and the logger thread writes it out. This is a multiple-producer, single-consumer design: any activity calling <code class="literal">log</code> is acting as a producer, and the background logger thread is the consumer. If the logger thread falls behind, the <code class="literal">BlockingQueue</code> eventually blocks the producers until the logger thread catches up.</p>
+<div class="example"><a id="ch07list13"/><p class="title"><b>Example 7.13. Producer-Consumer Logging Service with No Shutdown Support.</b></p><div class="example-contents">
+
+<div class="mediaobject"><img src="graphics/face1.jpg" width="45" alt="Producer-Consumer Logging Service with No Shutdown Support."/></div>
+<pre class="programlisting">public class LogWriter {
+    private final BlockingQueue&lt;String&gt; queue;
+    private final LoggerThread logger;
+
+    public LogWriter(Writer writer) {
+        this.queue = new LinkedBlockingQueue&lt;String&gt;(CAPACITY);
+        this.logger = new LoggerThread(writer);
+    }
+
+    public void start() { logger.start(); }
+
+    public void log(String msg) throws InterruptedException {
+        queue.put(msg);
+    }
+
+    private class LoggerThread extends Thread {
+        private final PrintWriter writer;
+        ...
+        public void run() {
+            try {
+                while (true)
+                   writer.println(queue.take());
+            } catch(InterruptedException ignored) {
+            } finally {
+                writer.close();
+            }
+        }
+    }
+}
+</pre>
+</div></div><br class="example-break"/>
+<p>For a service like <code class="literal">LogWriter</code> to be useful in production, we need a way to terminate the logger thread so it does not prevent the JVM from shutting down <a id="iddle1011" class="indexterm"/><a id="iddle1153" class="indexterm"/><a id="iddle1336" class="indexterm"/><a id="iddle2132" class="indexterm"/><a id="iddle2270" class="indexterm"/><a id="iddle2271" class="indexterm"/><a id="iddle2462" class="indexterm"/><a id="iddle2463" class="indexterm"/><a id="iddle3782" class="indexterm"/><a id="iddle3964" class="indexterm"/><a id="iddle3965" class="indexterm"/><a id="iddle4042" class="indexterm"/><a id="iddle4043" class="indexterm"/><a id="iddle4253" class="indexterm"/><a id="iddle4268" class="indexterm"/><a id="iddle4271" class="indexterm"/>normally. Stopping the logger thread is easy enough, since it repeatedly calls <code class="literal">take</code>, which is responsive to interruption; if the logger thread is modified to exit on catching <code class="literal">InterruptedException</code>, then interrupting the logger thread stops the service.</p>
+<p>However, simply making the logger thread exit is not a very satisfying shutdown mechanism. Such an abrupt shutdown discards log messages that might be waiting to be written to the log, but, more importantly, threads blocked in <code class="literal">log</code> because the queue is full <span class="emphasis"><em>will never become unblocked</em></span>. Cancelling a producerconsumer activity requires cancelling both the producers and the consumers. Interrupting the logger thread deals with the consumer, but because the producers in this case are not dedicated threads, cancelling them is harder.</p>
+<p>Another approach to shutting down <code class="literal">LogWriter</code> would be to set a “shutdown requested” flag to prevent further messages from being submitted, as shown in <a class="link" href="ch07s02.html#ch07list14" title="Example 7.14. Unreliable Way to Add Shutdown Support to the Logging Service.">Listing 7.14</a>. The consumer could then drain the queue upon being notified that shutdown has been requested, writing out any pending messages and unblocking any producers blocked in <code class="literal">log</code>. However, this approach has race conditions that make it unreliable. The implementation of <code class="literal">log</code> is a check-then-act sequence: producers could observe that the service has not yet been shut down but still queue messages after the shutdown, again with the risk that the producer might get blocked in <code class="literal">log</code> and never become unblocked. There are tricks that reduce the likelihood of this (like having the consumer wait several seconds before declaring the queue drained), but these do not change the fundamental problem, merely the likelihood that it will cause a failure.</p>
+<div class="example"><a id="ch07list14"/><p class="title"><b>Example 7.14. Unreliable Way to Add Shutdown Support to the Logging Service.</b></p><div class="example-contents">
+
+<div class="mediaobject"><img src="graphics/face1.jpg" width="45" alt="Unreliable Way to Add Shutdown Support to the Logging Service."/></div>
+<pre class="programlisting">public void log(String msg) throws InterruptedException {
+    if (!shutdownRequested)
+        queue.put(msg);
+    else
+        throw new IllegalStateException("logger is shut down");
+}
+</pre>
+</div></div><br class="example-break"/>
+<p>The way to provide reliable shutdown for <code class="literal">LogWriter</code> is to fix the race condition, which means making the submission of a new log message atomic. But we don’t want to hold a lock while trying to enqueue the message, since <code class="literal">put</code> could block. Instead, we can atomically check for shutdown and conditionally increment a counter to “reserve” the right to submit a message, as shown in <code class="literal">LogService</code> in <a class="link" href="ch07s02.html#ch07list15" title="Example 7.15. Adding Reliable Cancellation to LogWriter.">Listing 7.15</a>.</p>
+</div>
+<div class="section" title="ExecutorService Shutdown"><div class="titlepage"><div><div><h3 class="title"><a id="ch07lev2sec9"/><code class="literal">ExecutorService</code> Shutdown</h3></div></div></div>
+
+<p>In <a class="link" href="ch06s02.html#ch06lev2sec7" title="Executor Lifecycle">Section 6.2.4</a>, we saw that <code class="literal">ExecutorService</code> offers two ways to shut down: graceful shutdown with <code class="literal">shutdown</code>, and abrupt shutdown with <code class="literal">shutdownNow</code>. In an abrupt shutdown, <code class="literal">shutdownNow</code> returns the list of tasks that had not yet started after attempting to cancel all actively executing tasks.</p>
+
+<p/><div class="example"><a id="ch07list15"/><p class="title"><b>Example 7.15. Adding Reliable Cancellation to <code class="literal">LogWriter</code>.</b></p><div class="example-contents">
+
+
+<pre class="programlisting">public class LogService {
+    private final BlockingQueue&lt;String&gt; queue;
+    private final LoggerThread loggerThread;
+    private final PrintWriter writer;
+    @GuardedBy("this") private boolean isShutdown;
+    @GuardedBy("this") private int reservations;
+
+    public void start() { loggerThread.start(); }
+
+    public void stop() {
+        synchronized (this) { isShutdown = true; }
+        loggerThread.interrupt();
+    }
+
+    public void log(String msg) throws InterruptedException {
+        synchronized (this) {
+            if (isShutdown)
+                throw new IllegalStateException(...);
+            ++reservations;
+        }
+        queue.put(msg);
+    }
+
+    private class LoggerThread extends Thread {
+        public void run() {
+            try {
+                while (true) {
+                    try {
+                        synchronized (LogService.this) {
+                            if (isShutdown &amp;&amp; reservations == 0)
+                                break;
+                        }
+                        String msg = queue.take();
+                        synchronized (LogService.this) {
+                            --reservations;
+                        }
+                        writer.println(msg);
+                    } catch (InterruptedException e) { <span class="emphasis"><em>/*  retry  */</em></span> }
+                }
+            } finally {
+                writer.close();
+            }
+        }
+    }
+}
+</pre>
+</div></div><br class="example-break"/>
+<p><a id="iddle2133" class="indexterm"/><a id="iddle2018" class="indexterm"/><a id="iddle2972" class="indexterm"/><a id="iddle3560" class="indexterm"/><a id="iddle3561" class="indexterm"/><a id="iddle3562" class="indexterm"/><a id="iddle3566" class="indexterm"/><a id="iddle4260" class="indexterm"/><a id="iddle4261" class="indexterm"/><a id="iddle4263" class="indexterm"/><a id="iddle4485" class="indexterm"/><a id="iddle4486" class="indexterm"/><a id="iddle4489" class="indexterm"/><a id="iddle4995" class="indexterm"/>The two different termination options offer a tradeoff between safety and responsiveness: abrupt termination is faster but riskier because tasks may be interrupted in the middle of execution, and normal termination is slower but safer because the <code class="literal">ExecutorService</code> does not shut down until all queued tasks are processed. Other thread-owning services should consider providing a similar choice of shutdown modes.</p>
+<p>Simple programs can get away with starting and shutting down a global <code class="literal">ExecutorService</code> from <code class="literal">main</code>. More sophisticated programs are likely to encapsulate an <code class="literal">ExecutorService</code> behind a higher-level service that provides its own lifecycle methods, such as the variant of <code class="literal">LogService</code> in <a class="link" href="ch07s02.html#ch07list16" title="Example 7.16. Logging Service that Uses an ExecutorService.">Listing 7.16</a> that delegates to an <code class="literal">ExecutorService</code> instead of managing its own threads. Encapsulating an <code class="literal">ExecutorService</code> extends the ownership chain from application to service to thread by adding another link; each member of the chain manages the lifecycle of the services or threads it owns.</p>
+<div class="example"><a id="ch07list16"/><p class="title"><b>Example 7.16. Logging Service that Uses an <code class="literal">ExecutorService</code>.</b></p><div class="example-contents">
+
+<pre class="programlisting">public class LogService {
+    private final ExecutorService exec = newSingleThreadExecutor();
+    ...
+    public void start() { }
+
+    public void stop() throws InterruptedException {
+        try {
+            <span class="strong"><strong>exec.shutdown();</strong></span>
+            <span class="strong"><strong>exec.awaitTermination(TIMEOUT, UNIT);</strong></span>
+        } finally {
+            writer.close();
+        }
+    }
+    public void log(String msg) {
+        try {
+            exec.execute(new WriteTask(msg));
+        } catch (RejectedExecutionException ignored) { }
+    }
+}
+</pre>
+</div></div><br class="example-break"/>
+</div>
+<div class="section" title="Poison Pills"><div class="titlepage"><div><div><h3 class="title"><a id="ch07lev2sec10"/>Poison Pills</h3></div></div></div>
+
+<p>Another way to convince a producer-consumer service to shut down is with a <span class="emphasis"><em>poison pill</em></span>: a recognizable object placed on the queue that means “when you get this, stop.” With a FIFO queue, poison pills ensure that consumers finish the work on their queue before shutting down, since any work submitted prior to submitting the poison pill will be retrieved before the pill; producers should not submit any work after putting a poison pill on the queue. <code class="literal">IndexingService</code> in <a class="link" href="ch07s02.html#ch07list17" title="Example 7.17. Shutdown with Poison Pill.">Listings 7.17</a>, <a class="link" href="ch07s02.html#ch07list18" title="Example 7.18. Producer Thread for IndexingService.">7.18</a>, and <a class="link" href="ch07s02.html#ch07list19" title="Example 7.19. Consumer Thread for IndexingService.">7.19</a> shows a single-producer, single-consumer version of <a id="iddle2125" class="indexterm"/><a id="iddle3565" class="indexterm"/><a id="iddle3770" class="indexterm"/><a id="iddle3771" class="indexterm"/><a id="iddle4264" class="indexterm"/><a id="iddle4488" class="indexterm"/>the desktop search example from <a class="link" href="ch05s03.html#ch05list08" title="Example 5.8. Producer and Consumer Tasks in a Desktop Search Application.">Listing 5.8</a> on page <a class="link" href="ch05s03.html#ch05list08" title="Example 5.8. Producer and Consumer Tasks in a Desktop Search Application.">91</a> that uses a poison pill to shut down the service.</p>
+<div class="example"><a id="ch07list17"/><p class="title"><b>Example 7.17. Shutdown with Poison Pill.</b></p><div class="example-contents">
+
+<pre class="programlisting">public class IndexingService {
+    <span class="strong"><strong>private static final File POISON = new File("");</strong></span>
+    private final IndexerThread consumer = new IndexerThread();
+    private final CrawlerThread producer = new CrawlerThread();
+    private final BlockingQueue&lt;File&gt; queue;
+    private final FileFilter fileFilter;
+    private final File root;
+
+    class CrawlerThread extends Thread { <span class="emphasis"><em>/* Listing 7.18 */</em></span> }
+    class IndexerThread extends Thread { <span class="emphasis"><em>/* Listing 7.19 */</em></span> }
+
+    public void start() {
+        producer.start();
+        consumer.start();
+    }
+
+    public void stop() { producer.interrupt(); }
+
+    public void awaitTermination() throws InterruptedException {
+        consumer.join();
+    }
+}
+</pre>
+</div></div><br class="example-break"/>
+<p>Poison pills work only when the number of producers and consumers is known. The approach in <code class="literal">IndexingService</code> can be extended tomultiple producers by having each producer place a pill on the queue and having the consumer stop only when it receives <span class="emphasis"><em>N<sub>producers</sub></em></span> pills. It can be extended to multiple consumers by having each producer place <span class="emphasis"><em>N<sub>consumers</sub></em></span> pills on the queue, though this can get unwieldy with large numbers of producers and consumers. Poison pills work reliably only with unbounded queues.</p>
+</div>
+<div class="section" title="Example: A One-shot Execution Service"><div class="titlepage"><div><div><h3 class="title"><a id="ch07lev2sec11"/>Example: A One-shot Execution Service</h3></div></div></div>
+
+<p>If a method needs to process a batch of tasks and does not return until all the tasks are finished, it can simplify service lifecycle management by using a private <code class="literal">Executor</code> whose lifetime is bounded by that method. (The <code class="literal">invokeAll</code> and <code class="literal">invokeAny</code> methods can often be useful in such situations.)</p>
+<p>The <code class="literal">checkMail</code> method in <a class="link" href="ch07s02.html#ch07list20" title="Example 7.20. Using a Private Executor Whose Lifetime is Bounded by a Method Call.">Listing 7.20</a> checks for new mail in parallel on a number of hosts. It creates a private executor and submits a task for each host: it then shuts down the executor and waits for termination, which occurs when all <a id="iddle2106" class="indexterm"/><a id="iddle2124" class="indexterm"/><a id="iddle3563" class="indexterm"/><a id="iddle3564" class="indexterm"/><a id="iddle1008" class="indexterm"/><a id="iddle1009" class="indexterm"/><a id="iddle1337" class="indexterm"/><a id="iddle1338" class="indexterm"/><a id="iddle1339" class="indexterm"/><a id="iddle2273" class="indexterm"/><a id="iddle2355" class="indexterm"/><a id="iddle2760" class="indexterm"/><a id="iddle4249" class="indexterm"/><a id="iddle4270" class="indexterm"/><a id="iddle4426" class="indexterm"/><a id="iddle4449" class="indexterm"/><a id="iddle4450" class="indexterm"/><a id="iddle4656" class="indexterm"/><a id="iddle4780" class="indexterm"/><a id="iddle5118" class="indexterm"/>the mail-checking tasks have completed.<sup>[<a id="ch07fn04" href="#ftn.ch07fn04" class="footnote">4</a>]</sup></p>
+<div class="example"><a id="ch07list18"/><p class="title"><b>Example 7.18. Producer Thread for <code class="literal">IndexingService</code>.</b></p><div class="example-contents">
+
+
+<pre class="programlisting">public class CrawlerThread extends Thread {
+    public void run() {
+        try {
+            <span class="strong"><strong>crawl(root);</strong></span>
+        } catch (InterruptedException e) { <span class="emphasis"><em>/*  fall through  */</em></span>  }
+        finally {
+            while (true) {
+                try {
+                    <span class="strong"><strong>queue.put(POISON);</strong></span>
+                    break;
+                } catch (InterruptedException e1) { <span class="emphasis"><em>/*  retry  */</em></span> }
+            }
+        }
+    }
+
+    private void crawl(File root) throws InterruptedException {
+        ...
+    }
+}
+</pre>
+</div></div><br class="example-break"/>
+<div class="example"><a id="ch07list19"/><p class="title"><b>Example 7.19. Consumer Thread for <code class="literal">IndexingService</code>.</b></p><div class="example-contents">
+
+
+<pre class="programlisting">public class IndexerThread extends Thread {
+    public void run() {
+        try {
+            while (true) {
+                File file = queue.take();
+                <span class="strong"><strong>if (file == POISON)</strong></span>
+                   <span class="strong"><strong>break;</strong></span>
+                else
+                   indexFile(file);
+            }
+        } catch (InterruptedException consumed) { }
+    }
+}
+</pre>
+</div></div><br class="example-break"/>
+<div class="example"><a id="ch07list20"/><p class="title"><b>Example 7.20. Using a Private <code class="literal">Executor</code> Whose Lifetime is Bounded by a Method Call.</b></p><div class="example-contents">
+
+<pre class="programlisting">boolean checkMail(Set&lt;String&gt; hosts, long timeout, TimeUnit unit)
+        throws InterruptedException {
+    ExecutorService exec = Executors.newCachedThreadPool();
+    final AtomicBoolean hasNewMail = new AtomicBoolean(false);
+    try {
+        for (final String host : hosts)
+            exec.execute(new Runnable() {
+                public void run() {
+                   if (checkMail(host))
+                       hasNewMail.set(true);
+                }
+            });
+    } finally {
+        exec.shutdown();
+        exec.awaitTermination(timeout, unit);
+    }
+    return hasNewMail.get();
+}
+</pre>
+</div></div><br class="example-break"/>
+</div>
+<div class="section" title="Limitations of Shutdownnow"><div class="titlepage"><div><div><h3 class="title"><a id="ch07lev2sec12"/>Limitations of <code class="literal">Shutdownnow</code></h3></div></div></div>
+
+<p>When an <code class="literal">ExecutorService</code> is shut down abruptly with <code class="literal">shutdownNow</code>, it attempts to cancel the tasks currently in progress and returns a list of tasks that were submitted but never started so that they can be logged or saved for later processing.<sup>[<a id="ch07fn05" href="#ftn.ch07fn05" class="footnote">5</a>]</sup></p>
+<p>However, there is no general way to find out which tasks started but did not complete. This means that there is no way of knowing the state of the tasks in progress at shutdown time unless the tasks themselves perform some sort of checkpointing. To know which tasks have not completed, you need to know not only which tasks didn’t start, but also which tasks were in progress when the executor was shut down.<sup>[<a id="ch07fn06" href="#ftn.ch07fn06" class="footnote">6</a>]</sup></p>
+<p><code class="literal">TrackingExecutor</code> in <a class="link" href="ch07s02.html#ch07list21" title="Example 7.21. ExecutorService that Keeps Track of Cancelled Tasks After Shutdown.">Listing 7.21</a> shows a technique for determining which tasks were in progress at shutdown time. By encapsulating an <code class="literal">ExecutorService</code> and instrumenting <code class="literal">execute</code> (and similarly <code class="literal">submit</code>, not shown) to remember <a id="iddle2207" class="indexterm"/><a id="iddle5153" class="indexterm"/>which tasks were cancelled after shutdown, <code class="literal">TrackingExecutor</code> can identify which tasks started but did not complete normally. After the executor terminates, <code class="literal">getCancelledTasks</code> returns the list of cancelled tasks. In order for this technique to work, the tasks must preserve the thread’s interrupted status when they return, which well behaved tasks will do anyway.</p>
+<div class="example"><a id="ch07list21"/><p class="title"><b>Example 7.21. <code class="literal">ExecutorService</code> that Keeps Track of Cancelled Tasks After Shutdown.</b></p><div class="example-contents">
+
+<pre class="programlisting">public class TrackingExecutor extends AbstractExecutorService {
+    private final ExecutorService exec;
+    private final Set&lt;Runnable&gt; tasksCancelledAtShutdown =
+        Collections.synchronizedSet(new HashSet&lt;Runnable&gt;());
+    ...
+    public List&lt;Runnable&gt; getCancelledTasks() {
+        if (!exec.isTerminated())
+            throw new IllegalStateException(...);
+        return new ArrayList&lt;Runnable&gt;(tasksCancelledAtShutdown);
+    }
+
+    public void execute(final Runnable runnable) {
+        exec.execute(new Runnable() {
+            public void run() {
+                try {
+                    runnable.run();
+                } finally {
+                    if (isShutdown()
+                        &amp;&amp; Thread.currentThread().isInterrupted())
+                        tasksCancelledAtShutdown.add(runnable);
+                }
+            }
+        });
+    }
+
+    <span class="emphasis"><em>// delegate other ExecutorService methods to exec</em></span>
+}
+</pre>
+</div></div><br class="example-break"/>
+<p><code class="literal">WebCrawler</code> in <a class="link" href="ch07s02.html#ch07list22" title="Example 7.22. Using TrackingExecutorService to Save Unfinished Tasks for Later Execution.">Listing 7.22</a> shows an application of <code class="literal">TrackingExecutor</code>. The work of a web crawler is often unbounded, so if a crawler must be shut down we might want to save its state so it can be restarted later. <code class="literal">CrawlTask</code> provides a <code class="literal">getPage</code> method that identifies what page it is working on. When the crawler is shut down, both the tasks that did not start and those that were cancelled are scanned and their URLs recorded, so that page-crawling tasks for those URLs can be added to the queue when the crawler restarts.</p>
+<p><code class="literal">TrackingExecutor</code> has an unavoidable race condition that could make it yield false positives: tasks that are identified as cancelled but actually completed. This <a id="iddle2217" class="indexterm"/><a id="iddle1004" class="indexterm"/><a id="iddle1005" class="indexterm"/><a id="iddle1821" class="indexterm"/><a id="iddle1822" class="indexterm"/><a id="iddle2152" class="indexterm"/><a id="iddle2236" class="indexterm"/><a id="iddle2237" class="indexterm"/><a id="iddle2685" class="indexterm"/><a id="iddle2686" class="indexterm"/><a id="iddle2953" class="indexterm"/><a id="iddle3784" class="indexterm"/><a id="iddle3785" class="indexterm"/><a id="iddle4023" class="indexterm"/><a id="iddle4024" class="indexterm"/><a id="iddle4026" class="indexterm"/><a id="iddle4027" class="indexterm"/><a id="iddle4050" class="indexterm"/><a id="iddle4051" class="indexterm"/><a id="iddle4681" class="indexterm"/><a id="iddle4682" class="indexterm"/><a id="iddle4744" class="indexterm"/><a id="iddle4782" class="indexterm"/><a id="iddle4978" class="indexterm"/><a id="iddle4981" class="indexterm"/><a id="iddle5004" class="indexterm"/><a id="iddle5005" class="indexterm"/><a id="iddle5013" class="indexterm"/>arises because the thread pool could be shut down between when the last instruction of the task executes and when the pool records the task as complete. This is not a problem if tasks are <span class="emphasis"><em>idempotent</em></span> (if performing them twice has the same effect as performing them once), as they typically are in a web crawler. Otherwise, the application retrieving the cancelled tasks must be aware of this risk and be prepared to deal with false positives.</p>
+<div class="example"><a id="ch07list22"/><p class="title"><b>Example 7.22. Using <code class="literal">TrackingExecutorService</code> to Save Unfinished Tasks for Later Execution.</b></p><div class="example-contents">
+
+
+<pre class="programlisting">public abstract class WebCrawler {
+    private volatile TrackingExecutor exec;
+    @GuardedBy("this")
+    private final Set&lt;URL&gt; urlsToCrawl = new HashSet&lt;URL&gt;();
+    ...
+    public synchronized void start() {
+        exec = new TrackingExecutor(
+                Executors.newCachedThreadPool());
+        for (URL url : urlsToCrawl) submitCrawlTask(url);
+        urlsToCrawl.clear();
+    }
+
+    public synchronized void stop() throws InterruptedException {
+        try {
+            saveUncrawled(<span class="strong"><strong>exec.shutdownNow()</strong></span>);
+            if (<span class="strong"><strong>exec.awaitTermination(TIMEOUT, UNIT)</strong></span>)
+                saveUncrawled(exec.getCancelledTasks());
+        } finally {
+            exec = null;
+        }
+    }
+
+    protected abstract List&lt;URL&gt; processPage(URL url);
+
+    private void saveUncrawled(List&lt;Runnable&gt; uncrawled) {
+        for (Runnable task : uncrawled)
+            urlsToCrawl.add(((CrawlTask) task).getPage());
+    }
+    private void submitCrawlTask(URL u) {
+        exec.execute(new CrawlTask(u));
+    }
+    private class CrawlTask implements Runnable {
+        private final URL url;
+        ...
+        public void run() {
+            for (URL link : processPage(url)) {
+                if (Thread.currentThread().isInterrupted())
+                    return;
+                submitCrawlTask(link);
+            }
+        }
+        public URL getPage() { return url; }
+    }
+}
+</pre>
+</div></div><br class="example-break"/>
+</div>
+<div class="footnotes"><br/><hr/><div class="footnote"><p><sup>[<a id="ftn.ch07fn03" href="#ch07fn03" class="para">3</a>] </sup>If you are logging multiple lines as part of a single log message, you may need to use additional client-side locking to prevent undesirable interleaving of output from multiple threads. If two threads logged multiline stack traces to the same stream with one <code class="literal">println</code> call per line, the results would be interleaved unpredictably, and could easily look like one large but meaningless stack trace.</p></div><div class="footnote"><p><sup>[<a id="ftn.ch07fn04" href="#ch07fn04" class="para">4</a>] </sup>The reason an <code class="literal">AtomicBoolean</code> is used instead of a <code class="literal">volatile boolean</code> is that in order to access the <code class="literal">hasNewMail</code> flag from the inner <code class="literal">Runnable</code>, it would have to be <code class="literal">final</code>, which would preclude modifying it.</p></div><div class="footnote"><p><sup>[<a id="ftn.ch07fn05" href="#ch07fn05" class="para">5</a>] </sup>The <code class="literal">Runnable</code> objects returned by <code class="literal">shutdownNow</code> might not be the same objects that were submitted to the <code class="literal">ExecutorService</code>: they might be <span class="emphasis"><em>wrapped</em></span> instances of the submitted tasks.</p></div><div class="footnote"><p><sup>[<a id="ftn.ch07fn06" href="#ch07fn06" class="para">6</a>] </sup>Unfortunately, there is no shutdown option in which tasks not yet started are returned to the caller but tasks in progress are allowed to complete; such an option would eliminate this uncertain intermediate state.</p></div></div></div></body></html>

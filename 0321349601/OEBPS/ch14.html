@@ -1,0 +1,210 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN" "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml"><head><title>Chapter 14. Building Custom Synchronizers</title><link rel="stylesheet" href="styles/convert.css" type="text/css"/></head><body><div class="chapter" title="Chapter 14. Building Custom Synchronizers"><div class="titlepage"><div><div><h1 class="title"><a id="ch14"/>Chapter 14. Building Custom Synchronizers</h1></div></div></div>
+
+
+
+
+<p><a id="iddle1228" class="indexterm"/><a id="iddle18731" class="indexterm"/><a id="iddle1873" class="indexterm"/><a id="iddle1874" class="indexterm"/><a id="iddle1875" class="indexterm"/><a id="iddle1876" class="indexterm"/><a id="iddle1877" class="indexterm"/><a id="iddle3645" class="indexterm"/><a id="iddle3646" class="indexterm"/><a id="iddle4387" class="indexterm"/><a id="iddle4388" class="indexterm"/><a id="iddle4389" class="indexterm"/><a id="iddle4391" class="indexterm"/><a id="iddle4393" class="indexterm"/><a id="iddle4594" class="indexterm"/>The class libraries include a number of <span class="emphasis"><em>state-dependent</em></span> classes—those having operations with <span class="emphasis"><em>state-based preconditions</em></span>—such as <code class="literal">FutureTask</code>, <code class="literal">Semaphore</code>, and <code class="literal">BlockingQueue</code>. For example, you cannot remove an item from an empty queue or retrieve the result of a task that has not yet finished; before these operations can proceed, you must wait until the queue enters the “nonempty” state or the task enters the “completed” state.</p>
+<p>The easiest way to construct a state-dependent class is usually to build on top of an existing state-dependent library class; we did this in <code class="literal">ValueLatch</code> on page <a class="link" href="ch08s05.html#ch08list15" title="Example 8.15. Sequential Puzzle Solver.">187</a>, using a <code class="literal">CountDownLatch</code> to provide the required blocking behavior. But if the library classes do not provide the functionality you need, you can also build your own synchronizers using the low-level mechanisms provided by the language and libraries, including intrinsic <span class="emphasis"><em>condition queues</em></span>, explicit <code class="literal">Condition</code> objects, and the <code class="literal">AbstractQueuedSynchronizer</code> framework. This chapter explores the various options for implementing state dependence and the rules for using the state dependence mechanisms provided by the platform.</p>
+
+
+
+<div class="section" title="Managing State Dependence"><div class="titlepage"><div><div><h2 class="title"><a id="ch14lev1sec1"/>Managing State Dependence</h2></div></div></div>
+
+<p>In a single-threaded program, if a state-based precondition (like “the connection pool is nonempty”) does not hold when a method is called, it will never become true. Therefore, classes in sequential programs can be coded to fail when their preconditions do not hold. But in a concurrent program, state-based conditions can change through the actions of other threads: a pool that was empty a few instructions ago can become nonempty because another thread returned an element. State-dependent methods on concurrent objects can sometimes get away with failing when their preconditions are not met, but there is often a better alternative: wait for the precondition to become true.</p>
+<p>State-dependent operations that <span class="emphasis"><em>block</em></span> until the operation can proceed are more convenient and less error-prone than those that simply fail. The built-in condition queue mechanism enables threads to block until an object has entered a state that allows progress and to wake blocked threads when they may be able to make further progress. We cover the details of condition queues in <a class="link" href="ch14s02.html" title="Using Condition Queues">Section 14.2</a>, but to <a id="iddle1122" class="indexterm"/><a id="iddle1232" class="indexterm"/><a id="iddle1244" class="indexterm"/><a id="iddle1245" class="indexterm"/><a id="iddle1262" class="indexterm"/><a id="iddle1263" class="indexterm"/><a id="iddle1987" class="indexterm"/><a id="iddle2117" class="indexterm"/><a id="iddle2224" class="indexterm"/><a id="iddle2312" class="indexterm"/><a id="iddle2313" class="indexterm"/><a id="iddle2314" class="indexterm"/><a id="iddle3105" class="indexterm"/><a id="iddle3642" class="indexterm"/><a id="iddle3643" class="indexterm"/><a id="iddle3644" class="indexterm"/><a id="iddle3682" class="indexterm"/>motivate the value of an efficient condition wait mechanism, we first show how state dependence might be (painfully) tackled using polling and sleeping.</p>
+<p>A blocking state-dependent action takes the form shown in <a class="link" href="ch14.html#ch14list01" title="Example 14.1. Structure of Blocking State-dependent Actions.">Listing 14.1</a>. The pattern of locking is somewhat unusual in that the lock is released and reacquired in the middle of the operation. The state variables that make up the precondition must be guarded by the object’s lock, so that they can remain constant while the precondition is tested. But if the precondition does not hold, the lock must be released so another thread can modify the object state—otherwise the precondition will never become true. The lock must then be reacquired before testing the precondition again.</p>
+<div class="example"><a id="ch14list01"/><p class="title"><b>Example 14.1. Structure of Blocking State-dependent Actions.</b></p><div class="example-contents">
+
+<pre class="programlisting">    acquire lock on object state
+    while (precondition does not hold) {
+        release lock
+        wait until precondition might hold
+        optionally fail if interrupted or timeout expires
+        reacquire lock
+    }
+    perform action
+    release lock
+</pre>
+</div></div><br class="example-break"/>
+<p>Bounded buffers such as <code class="literal">ArrayBlockingQueue</code> are commonly used in producer-consumer designs. A bounded buffer provides <span class="emphasis"><em>put</em></span> and <span class="emphasis"><em>take</em></span> operations, each of which has preconditions: you cannot take an element from an empty buffer, nor put an element into a full buffer. State dependent operations can deal with precondition failure by throwing an exception or returning an error status (making it the caller’s problem), or by blocking until the object transitions to the right state.</p>
+<p>We’re going to develop several implementations of a bounded buffer that take different approaches to handling precondition failure. Each extends <code class="literal">BaseBoundedBuffer</code> in <a class="link" href="ch14.html#ch14list02" title="Example 14.2. Base Class for Bounded Buffer Implementations.">Listing 14.2</a>, which implements a classic array-based circular buffer where the buffer state variables (<code class="literal">buf</code>, <code class="literal">head</code>, <code class="literal">tail</code>, and <code class="literal">count</code>) are guarded by the buffer’s intrinsic lock. It provides synchronized <code class="literal">doPut</code> and <code class="literal">doTake</code> methods that are used by subclasses to implement the <code class="literal">put</code> and <code class="literal">take</code> operations; the underlying state is hidden from the subclasses.</p>
+<div class="section" title="Example: Propagating Precondition Failure to Callers"><div class="titlepage"><div><div><h3 class="title"><a id="ch14lev2sec1"/>Example: Propagating Precondition Failure to Callers</h3></div></div></div>
+
+<p><code class="literal">GrumpyBoundedBuffer</code> in <a class="link" href="ch14.html#ch14list03" title="Example 14.3. Bounded Buffer that Balks When Preconditions are Not Met.">Listing 14.3</a> is a crude first attempt at implementing a bounded buffer. The <code class="literal">put</code> and <code class="literal">take</code> methods are <code class="literal">synchronized</code> to ensure exclusive access to the buffer state, since both employ check-then-act logic in accessing the buffer.</p>
+<p>While this approach is easy enough to implement, it is annoying to use. Exceptions are supposed to be for exceptional conditions [EJ Item 39]. “Buffer is <a id="iddle2081" class="indexterm"/><a id="iddle2118" class="indexterm"/><a id="iddle3403" class="indexterm"/><a id="iddle3404" class="indexterm"/>full” is not an exceptional condition for a bounded buffer any more than “red” is an exceptional condition for a traffic signal. The simplification in implementing the buffer (forcing the caller to manage the state dependence) is more than made up for by the substantial complication in using it, since now the caller must be prepared to catch exceptions and possibly retry for every buffer operation.<sup>[<a id="ch14fn01" href="#ftn.ch14fn01" class="footnote">1</a>]</sup> A well-structured call to <code class="literal">take</code> is shown in <a class="link" href="ch14.html#ch14list04" title="Example 14.4. Client Logic for Calling GrumpyBoundedBuffer.">Listing 14.4</a>—not very pretty, especially if <code class="literal">put</code> and <code class="literal">take</code> are called throughout the program.</p>
+<div class="example"><a id="ch14list02"/><p class="title"><b>Example 14.2. Base Class for Bounded Buffer Implementations.</b></p><div class="example-contents">
+
+
+<pre class="programlisting">@ThreadSafe
+public abstract class BaseBoundedBuffer&lt;V&gt; {
+    @GuardedBy("this") private final V[] buf;
+    @GuardedBy("this") private int tail;
+    @GuardedBy("this") private int head;
+    @GuardedBy("this") private int count;
+
+    protected BaseBoundedBuffer(int capacity) {
+        this.buf = (V[]) new Object[capacity];
+    }
+
+    protected synchronized final void doPut(V v) {
+        buf[tail] = v;
+        if (++tail == buf.length)
+            tail = 0;
+        ++count;
+    }
+
+    protected synchronized final V doTake() {
+        V v = buf[head];
+        buf[head] = null;
+        if (++head == buf.length)
+            head = 0;
+        --count;
+        return v;
+    }
+
+    public synchronized final boolean isFull() {
+        return count == buf.length;
+    }
+
+    public synchronized final boolean isEmpty() {
+        return count == 0;
+    }
+}
+</pre>
+</div></div><br class="example-break"/>
+<div class="example"><a id="ch14list03"/><p class="title"><b>Example 14.3. Bounded Buffer that Balks When Preconditions are Not Met.</b></p><div class="example-contents">
+
+<div class="mediaobject"><img src="graphics/face1.jpg" width="45" alt="Bounded Buffer that Balks When Preconditions are Not Met."/></div>
+<pre class="programlisting">@ThreadSafe
+public class GrumpyBoundedBuffer&lt;V&gt; extends BaseBoundedBuffer&lt;V&gt; {
+    public GrumpyBoundedBuffer(int size) { super(size); }
+
+    public <span class="strong"><strong>synchronized</strong></span>  void put(V v) throws BufferFullException {
+        <span class="strong"><strong>if (isFull())</strong></span>
+            <span class="strong"><strong>throw new BufferFullException();</strong></span>
+        doPut(v);
+    }
+
+    public <span class="strong"><strong>synchronized</strong></span>  V take() throws BufferEmptyException {
+        <span class="strong"><strong>if (isEmpty())</strong></span>
+               <span class="strong"><strong>throw new BufferEmptyException();</strong></span>
+        return doTake();
+    }
+}
+</pre>
+</div></div><br class="example-break"/>
+<div class="example"><a id="ch14list04"/><p class="title"><b>Example 14.4. Client Logic for Calling <code class="literal">GrumpyBoundedBuffer</code>.</b></p><div class="example-contents">
+
+<pre class="programlisting">while (true) {
+    try {
+        V item = buffer.take();
+        <span class="emphasis"><em>// use item</em></span>
+        break;
+    } catch (BufferEmptyException e) {
+        Thread.sleep(SLEEP_GRANULARITY);
+    }
+}
+</pre>
+</div></div><br class="example-break"/>
+<p>A variant of this approach is to return an error value when the buffer is in the wrong state. This is a minor improvement in that it doesn’t abuse the exception mechanism by throwing an exception that really means “sorry, try again”, <a id="iddle1229" class="indexterm"/><a id="iddle1230" class="indexterm"/><a id="iddle1278" class="indexterm"/><a id="iddle1716" class="indexterm"/><a id="iddle2181" class="indexterm"/><a id="iddle3602" class="indexterm"/><a id="iddle3603" class="indexterm"/><a id="iddle3970" class="indexterm"/><a id="iddle4320" class="indexterm"/><a id="iddle4321" class="indexterm"/><a id="iddle4322" class="indexterm"/><a id="iddle4343" class="indexterm"/><a id="iddle5132" class="indexterm"/>but it does not address the fundamental problem: that callers must deal with precondition failures themselves.<sup>[<a id="ch14fn02" href="#ftn.ch14fn02" class="footnote">2</a>]</sup></p>
+<p>The client code in <a class="link" href="ch14.html#ch14list04" title="Example 14.4. Client Logic for Calling GrumpyBoundedBuffer.">Listing 14.4</a> is not the only way to implement the retry logic. The caller could retry the <code class="literal">take</code> immediately, without sleeping—an approach known as <span class="emphasis"><em>busy waiting</em></span> or <span class="emphasis"><em>spin waiting</em></span>. This could consume quite a lot of CPU time if the buffer state does not change for a while. On the other hand, if the caller decides to sleep so as not to consume so much CPU time, it could easily “oversleep” if the buffer state changes shortly after the call to <code class="literal">sleep</code>. So the client code is left with the choice between the poor CPU usage of spinning and the poor responsiveness of sleeping. (Somewhere between busy waiting and sleeping would be calling <code class="literal">Thread.yield</code> in each iteration, which is a hint to the scheduler that this would be a reasonable time to let another thread run. If you are waiting for another thread to do something, that something might happen faster if you yield the processor rather than consuming your full scheduling quantum.)</p>
+</div>
+<div class="section" title="Example: Crude Blocking by Polling and Sleeping"><div class="titlepage"><div><div><h3 class="title"><a id="ch14lev2sec2"/>Example: Crude Blocking by Polling and Sleeping</h3></div></div></div>
+
+<p><code class="literal">SleepyBoundedBuffer</code> in <a class="link" href="ch14.html#ch14list05" title="Example 14.5. Bounded Buffer Using Crude Blocking.">Listing 14.5</a> attempts to spare callers the inconvenience of implementing the retry logic on each call by encapsulating the same crude “poll and sleep” retry mechanism within the <code class="literal">put</code> and <code class="literal">take</code> operations. If the buffer is empty, <code class="literal">take</code> sleeps until another thread puts some data into the buffer; if the buffer is full, <code class="literal">put</code> sleeps until another thread makes room by removing some data. This approach encapsulates precondition management and simplifies using the buffer—definitely a step in the right direction.</p>
+<p>The implementation of <code class="literal">SleepyBoundedBuffer</code> is more complicated than the previous attempt.<sup>[<a id="ch14fn03" href="#ftn.ch14fn03" class="footnote">3</a>]</sup> The buffer code must test the appropriate state condition with the buffer lock held, because the variables that represent the state condition are guarded by the buffer lock. If the test fails, the executing thread sleeps for a while, first releasing the lock so other threads can access the buffer.<sup>[<a id="ch14fn04" href="#ftn.ch14fn04" class="footnote">4</a>]</sup> Once the thread wakes up, it reacquires the lock and tries again, alternating between sleeping and testing the state condition until the operation can proceed.</p>
+<p>From the perspective of the caller, this works nicely—if the operation can proceed immediately, it does, and otherwise it blocks—and the caller need not deal with the mechanics of failure and retry. Choosing the sleep granularity is a tradeoff between responsiveness and CPU usage; the smaller the sleep granularity, the more responsive, but also the more CPU resources consumed. <a class="link" href="ch14.html#ch14fig01" title="Figure 14.1. Thread Oversleeping Because the Condition Became True Just After It Went to Sleep.">Figure 14.1</a> shows how sleep granularity can affect responsiveness: there may be a delay between when buffer space becomes available and when the thread wakes up and checks again.</p>
+<div class="figure-float"><div class="figure"><a id="ch14fig01"/><p class="title"><b>Figure 14.1. Thread Oversleeping Because the Condition Became True Just After It Went to Sleep.</b></p><div class="figure-contents">
+
+
+<div class="mediaobject"><img src="graphics/14fig01.gif" height="124" alt="Thread Oversleeping Because the Condition Became True Just After It Went to Sleep."/></div>
+</div></div><br class="figure-break"/></div>
+
+<p/><div class="example"><a id="ch14list05"/><p class="title"><b>Example 14.5. Bounded Buffer Using Crude Blocking.</b></p><div class="example-contents">
+
+
+<div class="mediaobject"><img src="graphics/face1.jpg" width="45" alt="Bounded Buffer Using Crude Blocking."/></div>
+<pre class="programlisting">@ThreadSafe
+public class SleepyBoundedBuffer&lt;V&gt; extends BaseBoundedBuffer&lt;V&gt; {
+    public SleepyBoundedBuffer(int size) { super(size); }
+
+    public void put(V v) throws InterruptedException {
+        while (true) {
+            synchronized (this) {
+                if (<span class="strong"><strong>!isFull()</strong></span>) {
+                    doPut(v);
+                    return;
+                }
+            }
+            <span class="strong"><strong>Thread.sleep</strong></span>(SLEEP_GRANULARITY);
+        }
+    }
+
+    public V take() throws InterruptedException {
+        while (true) {
+            synchronized (this) {
+                if (<span class="strong"><strong>!isEmpty()</strong></span>)
+                    return doTake();
+            }
+            <span class="strong"><strong>Thread.sleep</strong></span>(SLEEP_GRANULARITY);
+        }
+    }
+}
+</pre>
+</div></div><br class="example-break"/>
+<p><a id="iddle1231" class="indexterm"/><a id="iddle15051" class="indexterm"/><a id="iddle1505" class="indexterm"/><a id="iddle1879" class="indexterm"/><a id="iddle2182" class="indexterm"/><a id="iddle3758" class="indexterm"/><a id="iddle4392" class="indexterm"/><code class="literal">SleepyBoundedBuffer</code> also creates another requirement for the caller—dealing with <code class="literal">InterruptedException</code>. When a method blocks waiting for a condition to become true, the polite thing to do is to provide a cancellation mechanism (see <a class="link" href="ch07.html" title="Chapter 7. Cancellation and Shutdown">Chapter 7</a>). Like most well-behaved blocking library methods, <code class="literal">SleepyBounded-Buffer</code> supports cancellation through interruption, returning early and throwing <code class="literal">InterruptedException</code> if interrupted.</p>
+<p>These attempts to synthesize a blocking operation from polling and sleeping were fairly painful. It would be nice to have a way of suspending a thread but ensuring that it is awakened promptly when a certain condition (such as the buffer being no longer full) becomes true. This is exactly what <span class="emphasis"><em>condition queues</em></span> do.</p>
+</div>
+<div class="section" title="Condition Queues to the Rescue"><div class="titlepage"><div><div><h3 class="title"><a id="ch14lev2sec3"/>Condition Queues to the Rescue</h3></div></div></div>
+
+<p>Condition queues are like the “toast is ready” bell on your toaster. If you are listening for it, you are notified promptly when your toast is ready and can drop what you are doing (or not, maybe you want to finish the newspaper first) and <a id="iddle1267" class="indexterm"/><a id="iddle1371" class="indexterm"/><a id="iddle1372" class="indexterm"/><a id="iddle1373" class="indexterm"/><a id="iddle1503" class="indexterm"/><a id="iddle1507" class="indexterm"/><a id="iddle1581" class="indexterm"/><a id="iddle1613" class="indexterm"/><a id="iddle1711" class="indexterm"/><a id="iddle1887" class="indexterm"/><a id="iddle1888" class="indexterm"/><a id="iddle1889" class="indexterm"/><a id="iddle2087" class="indexterm"/><a id="iddle2326" class="indexterm"/><a id="iddle2327" class="indexterm"/><a id="iddle2623" class="indexterm"/><a id="iddle2824" class="indexterm"/><a id="iddle2835" class="indexterm"/><a id="iddle3001" class="indexterm"/><a id="iddle3111" class="indexterm"/><a id="iddle3396" class="indexterm"/><a id="iddle3757" class="indexterm"/><a id="iddle3759" class="indexterm"/><a id="iddle3950" class="indexterm"/><a id="iddle4212" class="indexterm"/><a id="iddle4964" class="indexterm"/><a id="iddle5140" class="indexterm"/>get your toast. If you are not listening for it (perhaps you went outside to get the newspaper), you could miss the notification, but on return to the kitchen you can observe the state of the toaster and either retrieve the toast if it is finished or start listening for the bell again if it is not.</p>
+<p>A <span class="emphasis"><em>condition queue</em></span> gets its name because it gives a group of threads—called the <span class="emphasis"><em>wait set</em></span>—a way to wait for a specific condition to become true. Unlike typical queues in which the elements are data items, the elements of a condition queue are the threads waiting for the condition.</p>
+<p>Just as each Java object can act as a lock, each object can also act as a condition queue, and the <code class="literal">wait</code>, <code class="literal">notify</code>, and <code class="literal">notifyAll</code> methods in <code class="literal">Object</code> constitute the API for intrinsic condition queues. An object’s intrinsic lock and its intrinsic condition queue are related: in order to call any of the condition queue methods on object <span class="emphasis"><em>X</em></span>, you must hold the lock on <span class="emphasis"><em>X</em></span>. This is because the mechanism for waiting for state-based conditions is necessarily tightly bound to the mechanism for preserving state consistency: you cannot wait for a condition unless you can examine the state, and you cannot release another thread from a condition wait unless you can modify the state.</p>
+<p><code class="literal">Object.wait</code> atomically releases the lock and asks the OS to suspend the current thread, allowing other threads to acquire the lock and therefore modify the object state. Upon waking, it reacquires the lock before returning. Intuitively, calling <code class="literal">wait</code> means “I want to go to sleep, but wake me when something interesting happens”, and calling the notification methods means “something interesting happened”.</p>
+<p><code class="literal">BoundedBuffer</code> in <a class="link" href="ch14.html#ch14list06" title="Example 14.6. Bounded Buffer Using Condition Queues.">Listing 14.6</a> implements a bounded buffer using <code class="literal">wait</code> and <code class="literal">notifyAll</code>. This is simpler than the sleeping version, and is both more efficient (waking up less frequently if the buffer state does not change) and more responsive (waking up promptly when an interesting state change happens). This is a big improvement, but note that the introduction of condition queues didn’t change the semantics compared to the sleeping version. It is simply an optimization in several dimensions: CPU efficiency, context-switch overhead, and responsiveness. Condition queues don’t let you do anything you can’t do with sleeping and polling<sup>[<a id="ch14fn05" href="#ftn.ch14fn05" class="footnote">5</a>]</sup>, but they make it a lot easier and more efficient to express and manage state dependence.</p>
+
+<p/><div class="example"><a id="ch14list06"/><p class="title"><b>Example 14.6. Bounded Buffer Using Condition Queues.</b></p><div class="example-contents">
+
+
+<pre class="programlisting">@ThreadSafe
+public class BoundedBuffer&lt;V&gt; extends BaseBoundedBuffer&lt;V&gt; {
+    <span class="emphasis"><em>// CONDITION PREDICATE: not-full (!isFull())</em></span>
+    <span class="emphasis"><em>// CONDITION PREDICATE: not-empty (!isEmpty())</em></span>
+
+    public BoundedBuffer(int size) { super(size); }
+
+    <span class="emphasis"><em>// BLOCKS-UNTIL: not-full</em></span>
+    public  <span class="strong"><strong>synchronized</strong></span>  void put(V v) throws InterruptedException {
+        <span class="strong"><strong>while (isFull())</strong></span>
+            <span class="strong"><strong>wait();</strong></span>
+        doPut(v);
+        <span class="strong"><strong>notifyAll();</strong></span>
+    }
+
+    <span class="emphasis"><em>// BLOCKS-UNTIL: not-empty</em></span>
+    public  <span class="strong"><strong>synchronized</strong></span>  V take() throws InterruptedException {
+        <span class="strong"><strong>while (isEmpty())</strong></span>
+            <span class="strong"><strong>wait();</strong></span>
+        V v = doTake();
+        <span class="strong"><strong>notifyAll();</strong></span>
+        return v;
+    }
+}
+</pre>
+</div></div><br class="example-break"/>
+<p><a id="iddle1509" class="indexterm"/><a id="iddle2088" class="indexterm"/><a id="iddle3330" class="indexterm"/><a id="iddle3772" class="indexterm"/><code class="literal">BoundedBuffer</code> is finally good enough to use—it is easy to use and manages state dependence sensibly.<sup>[<a id="ch14fn06" href="#ftn.ch14fn06" class="footnote">6</a>]</sup> A production version should also include timed versions of <code class="literal">put</code> and <code class="literal">take</code>, so that blocking operations can time out if they cannot complete within a time budget. The timed version of <code class="literal">Object.wait</code> makes this easy to implement.</p>
+</div>
+</div>
+
+
+
+
+
+
+
+
+
+
+<div class="footnotes"><br/><hr/><div class="footnote"><p><sup>[<a id="ftn.ch14fn01" href="#ch14fn01" class="para">1</a>] </sup>Pushing the state dependence back to the caller also makes it nearly impossible to do things like preserve FIFO ordering; by forcing the caller to retry, you lose the information of who arrived first.</p></div><div class="footnote"><p><sup>[<a id="ftn.ch14fn02" href="#ch14fn02" class="para">2</a>] </sup><code class="literal">Queue</code> offers both of these options—<code class="literal">poll</code> returns <code class="literal">null</code> if the queue is empty, and <code class="literal">remove</code> throws an exception—but <code class="literal">Queue</code> is not intended for use in producer-consumer designs. <code class="literal">BlockingQueue</code>, whose operations block until the queue is in the right state to proceed, is a better choice when producers and consumers will execute concurrently.</p></div><div class="footnote"><p><sup>[<a id="ftn.ch14fn03" href="#ch14fn03" class="para">3</a>] </sup>We will spare you the details of Snow White’s other five bounded buffer implementations, especially <code class="literal">SneezyBoundedBuffer</code>.</p></div><div class="footnote"><p><sup>[<a id="ftn.ch14fn04" href="#ch14fn04" class="para">4</a>] </sup>It is usually a bad idea for a thread to go to sleep or otherwise block with a lock held, but in this case is even worse because the desired condition (buffer is full/empty) can never become true if the lock is not released!</p></div><div class="footnote"><p><sup>[<a id="ftn.ch14fn05" href="#ch14fn05" class="para">5</a>] </sup>This is notquite true; a <span class="emphasis"><em>fair</em></span> condition queue can guarantee the relative order in which threads are released from the wait set. Intrinsic condition queues, like intrinsic locks, do not offer fair queueing; explicit <code class="literal">Condition</code>s offer a choice of fair or nonfair queueing.</p></div><div class="footnote"><p><sup>[<a id="ftn.ch14fn06" href="#ch14fn06" class="para">6</a>] </sup><code class="literal">ConditionBoundedBuffer</code> in <a class="link" href="ch14s03.html" title="Explicit Condition Objects">Section 14.3</a> is even better: it is more efficient because it can use single notification instead of <code class="literal">notifyAll</code>.</p></div></div></div></body></html>
