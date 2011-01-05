@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN" "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml"><head><title>Appendix A. Annotations for Concurrency</title><link rel="stylesheet" href="styles/convert.css" type="text/css"/></head><body><div class="appendix" title="Appendix A. Annotations for Concurrency"><div class="titlepage"><div><div><h1 class="title"><a id="app01"/>Appendix A. Annotations for Concurrency</h1></div></div></div>
+
+
+
+
+<p><a id="iddle1093" class="indexterm"/><a id="iddle1098" class="indexterm"/><a id="iddle1099" class="indexterm"/><a id="iddle1100" class="indexterm"/><a id="iddle1456" class="indexterm"/><a id="iddle1828" class="indexterm"/><a id="iddle1960" class="indexterm"/><a id="iddle2480" class="indexterm"/><a id="iddle2704" class="indexterm"/><a id="iddle3339" class="indexterm"/><a id="iddle4861" class="indexterm"/><a id="iddle4939" class="indexterm"/>We’ve used annotations such as <code class="literal">@GuardedBy</code> and <code class="literal">@ThreadSafe</code> to show how thread-safety promises and synchronization policies can be documented. This appendix documents these annotations; their source code can be downloaded from this book’s website. (There are, of course, additional thread-safety promises and implementation details that should be documented but that are not captured by this minimal set of annotations.)</p>
+
+
+
+<div class="section" title="Class Annotations"><div class="titlepage"><div><div><h2 class="title"><a id="app01lev1sec1"/>Class Annotations</h2></div></div></div>
+
+<p>We use three class-level annotations to describe a class’s <span class="emphasis"><em>intended</em></span> thread-safety promises: <code class="literal">@Immutable</code>, <code class="literal">@ThreadSafe</code>, and <code class="literal">@NotThreadSafe</code>. <code class="literal">@Immutable</code> means, of course, that the class is immutable, and implies <code class="literal">@ThreadSafe</code>. <code class="literal">@NotThreadSafe</code> is optional—if a class is not annotated as thread-safe, it should be presumed not to be thread-safe, but if you want to make it extra clear, use <code class="literal">@NotThreadSafe</code>.</p>
+<p>These annotations are relatively unintrusive and are beneficial to both users and maintainers. Users can see immediately whether a class is thread-safe, and maintainers can see immediately whether thread-safety guarantees must be preserved. Annotations are also useful to a third constituency: tools. Static codeanalysis tools may be able to verify that the code complies with the contract indicated by the annotation, such as verifying that a class annotated with <code class="literal">@Immutable</code> actually is immutable.</p>
+</div>
+
+
+</div></body></html>

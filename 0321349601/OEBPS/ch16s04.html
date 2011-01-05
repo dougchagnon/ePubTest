@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN" "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml"><head><title>Summary</title><link rel="stylesheet" href="styles/convert.css" type="text/css"/></head><body><div class="section" title="Summary"><div class="titlepage"><div><div><h2 class="title"><a id="ch16lev1sec4"/>Summary</h2></div></div></div>
+
+
+<p>The Java Memory Model specifies when the actions of one thread on memory are guaranteed to be visible to another. The specifics involve ensuring that operations are ordered by a partial ordering called <span class="emphasis"><em>happens-before</em></span>, which is specified at the level of individual memory and synchronization operations. In the absence of sufficient synchronization, some very strange things can happen when threads access shared data. However, the higher-level rules offered in <a class="link" href="ch02.html" title="Chapter 2. Thread Safety">Chapters 2</a> and <a class="link" href="ch03.html" title="Chapter 3. Sharing Objects">3</a>, such as <code class="literal">@GuardedBy</code> and safe publication, can be used to ensure thread safety without resorting to the low-level details of <span class="emphasis"><em>happens-before</em></span>.</p>
+</div></body></html>

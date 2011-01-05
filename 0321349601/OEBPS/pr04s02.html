@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN" "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml"><head><title>Code Examples</title><link rel="stylesheet" href="styles/convert.css" type="text/css"/></head><body><div class="section" title="Code Examples"><div class="titlepage"><div><div><h2 class="title"><a id="pref03lev1sec2"/>Code Examples</h2></div></div></div>
+
+<p>While many of the general concepts in this book are applicable to versions of Java prior to Java 5.0 and even to non-Java environments, most of the code examples (and all the statements about the Java Memory Model) assume Java 5.0 or later. Some of the code examples may use library features added in Java 6.</p>
+<p>The code examples have been compressed to reduce their size and to highlight the relevant portions. The full versions of the code examples, as well as supplementary examples and errata, are available from the book’s website, <code class="literal"><a class="ulink" href="http://www.javaconcurrencyinpractice.com">http://www.javaconcurrencyinpractice.com</a></code>.</p>
+<p>The code examples are of three sorts: “good” examples, “not so good” examples, and “bad” examples. Good examples illustrate techniques that should be emulated. Bad examples illustrate techniques that should definitely <span class="emphasis"><em>not</em></span> be emulated, and are identified with a “Mr. Yuk” icon<sup>[<a id="pref03fn01" href="#ftn.pref03fn01" class="footnote">1</a>]</sup> to make it clear that this is “toxic” code (see <a class="link" href="pr04s02.html#pref03list01" title="Example 1. Bad Way to Sort a List. Don’t Do this.">Listing 1</a>). Not-so-good examples illustrate techniques that are not <span class="emphasis"><em>necessarily</em></span> wrong but are fragile, risky, or perform poorly, and are decorated with a “Mr. Could BeHappier” icon as in <a class="link" href="pr04s02.html#pref03list02" title="Example 2. Less than Optimal Way to Sort a List.">Listing 2</a>.</p>
+<div class="example"><a id="pref03list01"/><p class="title"><b>Example 1. Bad Way to Sort a List. <span class="emphasis"><em>Don’t Do this.</em></span></b></p><div class="example-contents">
+
+<div class="mediaobject"><img src="graphics/face.jpg" width="52" alt="Bad Way to Sort a List. Don’t Do this."/></div>
+<pre class="programlisting">public &lt;T extends Comparable&lt;? super T&gt;&gt; void sort(List&lt;T&gt; list) {
+    // <span class="emphasis"><em>Never returns the wrong answer!</em></span>
+    System.exit(0);
+}
+</pre>
+</div></div><br class="example-break"/>
+<p>Some readers may question the role of the “bad” examples in this book; after all, a book should show how to do things right, not wrong. The bad examples have two purposes. They illustrate common pitfalls, but more importantly they demonstrate how to analyze a program for thread safety—and the best way to do that is to see the ways in which thread safety is compromised.</p>
+
+<p/><div class="example"><a id="pref03list02"/><p class="title"><b>Example 2. Less than Optimal Way to Sort a List.</b></p><div class="example-contents">
+
+
+<div class="mediaobject"><img src="graphics/face1.jpg" width="45" alt="Less than Optimal Way to Sort a List."/></div>
+<pre class="programlisting">public &lt;T extends Comparable&lt;? super T&gt;&gt; void sort(List&lt;T&gt; list) {
+    for (int i=0; i&lt;1000000; i++)
+        doNothing();
+    Collections.sort(list);
+}
+</pre>
+</div></div><br class="example-break"/>
+<div class="footnotes"><br/><hr/><div class="footnote"><p><sup>[<a id="ftn.pref03fn01" href="#pref03fn01" class="para">1</a>] </sup>Mr. Yuk is a registered trademark of the Children’s Hospital of Pittsburgh and appears by permission.</p></div></div></div></body></html>

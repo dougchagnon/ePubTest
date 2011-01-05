@@ -1,0 +1,120 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN" "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml"><head><title>Safe Publication</title><link rel="stylesheet" href="styles/convert.css" type="text/css"/></head><body><div class="section" title="Safe Publication"><div class="titlepage"><div><div><h2 class="title"><a id="ch03lev1sec5"/>Safe Publication</h2></div></div></div>
+
+<p>So far we have focused on ensuring that an object <span class="emphasis"><em>not</em></span> be published, such as when it is supposed to be confined to a thread or within another object. Of course, sometimes we <span class="emphasis"><em>do</em></span> want to share objects across threads, and in this case we must do so safely. Unfortunately, simply storing a reference to an object into a public field, as in <a class="link" href="ch03s05.html#ch03list14" title="Example 3.14. Publishing an Object without Adequate Synchronization. Don’t Do this.">Listing 3.14</a>, is <span class="emphasis"><em>not</em></span> enough to publish that object safely.</p>
+
+<p/><div class="example"><a id="ch03list13"/><p class="title"><b>Example 3.13. Caching the Last Result Using a Volatile Reference to an Immutable Holder Object.</b></p><div class="example-contents">
+
+
+<pre class="programlisting">@ThreadSafe
+public class VolatileCachedFactorizer implements Servlet {
+    private volatile OneValueCache cache =
+        new OneValueCache(null, null);
+
+    public void service(ServletRequest req, ServletResponse resp) {
+        BigInteger i = extractFromRequest(req);
+        BigInteger[] factors = cache.getFactors(i);
+        if (factors == null) {
+            factors = factor(i);
+            cache = new OneValueCache(i, factors);
+        }
+        encodeIntoResponse(resp, factors);
+    }
+}
+</pre>
+</div></div><br class="example-break"/>
+<div class="example"><a id="ch03list14"/><p class="title"><b>Example 3.14. Publishing an Object without Adequate Synchronization. <span class="emphasis"><em>Don’t Do this.</em></span></b></p><div class="example-contents">
+
+<div class="mediaobject"><img src="graphics/face.jpg" width="52" alt="Publishing an Object without Adequate Synchronization. Don’t Do this."/></div>
+<pre class="programlisting"><span class="emphasis"><em>// Unsafe publication</em></span>
+public Holder holder;
+
+public void initialize() {
+    holder = new Holder(42);
+}
+</pre>
+</div></div><br class="example-break"/>
+<p><a id="iddle1569" class="indexterm"/><a id="iddle1570" class="indexterm"/><a id="iddle2216" class="indexterm"/><a id="iddle3723" class="indexterm"/>You may be surprised at how badly this harmless-looking example could fail. Because of visibility problems, the <code class="literal">Holder</code> could appear to another thread to be in an inconsistent state, even though its invariants were properly established by its constructor! This improper publication could allow another thread to observe a <span class="emphasis"><em>partially constructed object</em></span>.</p>
+<div class="section" title="Improper Publication: When Good Objects Go Bad"><div class="titlepage"><div><div><h3 class="title"><a id="ch03lev2sec11"/>Improper Publication: When Good Objects Go Bad</h3></div></div></div>
+
+<p>You cannot rely on the integrity of partially constructed objects. An observing thread could see the object in an inconsistent state, and then later see its state suddenly change, even though it has not been modified since publication. In fact, if the <code class="literal">Holder</code> in <a class="link" href="ch03s05.html#ch03list15" title="Example 3.15. Class at Risk of Failure if Not Properly Published.">Listing 3.15</a> is published using the unsafe publication idiom in <a class="link" href="ch03s05.html#ch03list14" title="Example 3.14. Publishing an Object without Adequate Synchronization. Don’t Do this.">Listing 3.14</a>, and a thread other than the publishing thread were to call <code class="literal">assertSanity</code>, it could throw <code class="literal">AssertionError</code>!<sup>[<a id="ch03fn15" href="#ftn.ch03fn15" class="footnote">15</a>]</sup></p>
+
+<p/><div class="example"><a id="ch03list15"/><p class="title"><b>Example 3.15. Class at Risk of Failure if Not Properly Published.</b></p><div class="example-contents">
+
+
+<div class="mediaobject"><img src="graphics/face1.jpg" width="45" alt="Class at Risk of Failure if Not Properly Published."/></div>
+<pre class="programlisting">public class Holder {
+    private int n;
+
+    public Holder(int n) { this.n = n; }
+
+    public void assertSanity() {
+        if (n != n)
+            throw new AssertionError("This statement is false.");
+    }
+}
+</pre>
+</div></div><br class="example-break"/>
+<p><a id="iddle2150" class="indexterm"/><a id="iddle2709" class="indexterm"/><a id="iddle2718" class="indexterm"/><a id="iddle2740" class="indexterm"/><a id="iddle2741" class="indexterm"/><a id="iddle2896" class="indexterm"/><a id="iddle3351" class="indexterm"/><a id="iddle3722" class="indexterm"/><a id="iddle4033" class="indexterm"/><a id="iddle4034" class="indexterm"/><a id="iddle4365" class="indexterm"/>Because synchronization was not used to make the <code class="literal">Holder</code> visible to other threads, we say the <code class="literal">Holder</code> was <span class="emphasis"><em>not properly published</em></span>. Two things can go wrong with improperly published objects. Other threads could see a stale value for the <code class="literal">holder</code> field, and thus see a <code class="literal">null</code> reference or other older value even though a value has been placed in <code class="literal">holder</code>. But far worse, other threads could see an up-todate value for the <code class="literal">holder</code> reference, but stale values for the <span class="emphasis"><em>state</em></span> of the <code class="literal">Holder</code>.<sup>[<a id="ch03fn16" href="#ftn.ch03fn16" class="footnote">16</a>]</sup> To make things even less predictable, a thread may see a stale value the first time it reads a field and then a more up-to-date value the next time, which is why <code class="literal">assertSanity</code> can throw <code class="literal">AssertionError</code>.</p>
+<p>At the risk of repeating ourselves, some very strange things can happen when data is shared across threads without sufficient synchronization.</p>
+</div>
+<div class="section" title="Immutable Objects and Initialization Safety"><div class="titlepage"><div><div><h3 class="title"><a id="ch03lev2sec12"/>Immutable Objects and Initialization Safety</h3></div></div></div>
+
+<p>Because immutable objects are so important, the JavaMemory Model offers a special guarantee of <span class="emphasis"><em>initialization safety</em></span> for sharing immutable objects. As we’ve seen, that an object reference becomes visible to another thread does not necessarily mean that the state of that object is visible to the consuming thread. In order to guarantee a consistent view of the object’s state, synchronization is needed.</p>
+<p>Immutable objects, on the other hand, can be safely accessed <span class="emphasis"><em>even when synchronization is not used to publish the object reference</em></span>. For this guarantee of initialization safety to hold, all of the requirements for immutability must be met: unmodi-fiable state, all fields are <code class="literal">final</code>, and proper construction. (If <code class="literal">Holder</code> in <a class="link" href="ch03s05.html#ch03list15" title="Example 3.15. Class at Risk of Failure if Not Properly Published.">Listing 3.15</a> were immutable, <code class="literal">assertSanity</code> could not throw <code class="literal">AssertionError</code>, even if the <code class="literal">Holder</code> was not properly published.)</p>
+<div class="sidebar"><a id="ch03sb09"/><p class="title"><b/></p>
+<p><span class="emphasis"><em>Immutable</em></span> objects can be used safely by any thread without additional synchronization, even when synchronization is not used to publish them.</p>
+</div>
+<p>This guarantee extends to the values of all final fields of properly constructed objects; final fields can be safely accessed without additional synchronization. However, if final fields refer to mutable objects, synchronization is still required to access the state of the objects they refer to.</p>
+</div>
+<div class="section" title="Safe Publication Idioms"><div class="titlepage"><div><div><h3 class="title"><a id="ch03lev2sec13"/>Safe Publication Idioms</h3></div></div></div>
+
+<p>Objects that are not immutable must be <span class="emphasis"><em>safely published</em></span>, which usually entails synchronization by both the publishing and the consuming thread. For the moment, let’s focus on ensuring that the consuming thread can see the object in its aspublished state; we’ll deal with visibility of modifications made after publication soon.</p>
+<div class="sidebar"><a id="ch03sb10"/><p class="title"><b/></p>
+<p>To publish an object safely, both the reference to the object and the object’s state must be made visible to other threads at the same time. A properly constructed object can be safely published by:</p>
+<div class="itemizedlist"><ul class="itemizedlist"><li class="listitem"><p>Initializing an object reference from a static initializer;</p></li><li class="listitem"><p>Storing a reference to it into a <code class="literal">volatile</code> field or <code class="literal">AtomicReference</code>;</p></li><li class="listitem"><p>Storing a reference to it into a <code class="literal">final</code> field of a properly constructed object; or</p></li><li class="listitem"><p>Storing a reference to it into a field that is properly guarded by a lock.</p></li></ul></div>
+</div>
+<p>The internal synchronization in thread-safe collections means that placing an object in a thread-safe collection, such as a <code class="literal">Vector</code> or <code class="literal">synchronizedList</code>, fulfills the last of these requirements. If thread <span class="emphasis"><em>A</em></span> places object <span class="emphasis"><em>X</em></span> in a thread-safe collection and thread <span class="emphasis"><em>B</em></span> subsequently retrieves it, <span class="emphasis"><em>B</em></span> is guaranteed to see the state of <span class="emphasis"><em>X</em></span> as <span class="emphasis"><em>A</em></span> left it, even though the application code that hands <span class="emphasis"><em>X</em></span> off in this manner has no <span class="emphasis"><em>explicit</em></span> synchronization. The thread-safe library collections offer the following safe publication guarantees, even if the Javadoc is less than clear on the subject:</p>
+<div class="itemizedlist"><ul class="itemizedlist"><li class="listitem"><p>Placing a key or value in a <code class="literal">Hashtable</code>, <code class="literal">synchronizedMap</code>, or <code class="literal">Concurrent-Map</code> safely publishes it to any thread that retrieves it from the <code class="literal">Map</code> (whether directly or via an iterator);</p></li><li class="listitem"><p>Placing an element in a <code class="literal">Vector</code>, <code class="literal">CopyOnWriteArrayList</code>, <code class="literal">CopyOnWrite-ArraySet</code>, <code class="literal">synchronizedList</code>, or <code class="literal">synchronizedSet</code> safely publishes it to any thread that retrieves it from the collection;</p></li><li class="listitem"><p>Placing an element on a <code class="literal">BlockingQueue</code> or a <code class="literal">ConcurrentLinkedQueue</code> safely publishes it to any thread that retrieves it from the queue.</p></li></ul></div>
+<p class="continued"><a id="iddle1785" class="indexterm"/><a id="iddle1786" class="indexterm"/><a id="iddle2240" class="indexterm"/><a id="iddle2426" class="indexterm"/><a id="iddle2530" class="indexterm"/><a id="iddle2531" class="indexterm"/><a id="iddle2708" class="indexterm"/><a id="iddle2888" class="indexterm"/><a id="iddle3348" class="indexterm"/><a id="iddle4437" class="indexterm"/><a id="iddle4438" class="indexterm"/><a id="iddle4439" class="indexterm"/>Other handoff mechanisms in the class library (such as <code class="literal">Future</code> and <code class="literal">Exchanger</code>) also constitute safe publication; we will identify these as providing safe publication as they are introduced.</p>
+<p>Using a static initializer is often the easiest and safest way to publish objects that can be statically constructed:</p>
+<div class="informalexample">
+<pre class="programlisting">public static Holder holder = new Holder(42);
+</pre>
+</div>
+<p class="continued">Static initializers are executed by the JVM at class initialization time; because of internal synchronization in the JVM, this mechanism is guaranteed to safely publish any objects initialized in this way [JLS 12.4.2].</p>
+</div>
+<div class="section" title="Effectively Immutable Objects"><div class="titlepage"><div><div><h3 class="title"><a id="ch03lev2sec14"/>Effectively Immutable Objects</h3></div></div></div>
+
+<p>Safe publication is sufficient for other threads to safely access objects that are not going to be modified after publication without additional synchronization. The safe publication mechanisms all guarantee that the as-published state of an object is visible to all accessing threads as soon as the reference to it is visible, and if that state is not going to be changed again, this is sufficient to ensure that any access is safe.</p>
+<p>Objects that are not technically immutable, but whose state will not be modified after publication, are called <span class="emphasis"><em>effectively immutable</em></span>. They do not need to meet the strict definition of immutability in <a class="link" href="ch03s04.html" title="Immutability">Section 3.4</a>; they merely need to be treated by the program as if they were immutable after they are published. Using effectively immutable objects can simplify development and improve performance by reducing the need for synchronization.</p>
+<div class="sidebar"><a id="ch03sb11"/><p class="title"><b/></p>
+<p>Safely published <span class="emphasis"><em>effectively immutable</em></span> objects can be used safely by any thread without additional synchronization.</p>
+</div>
+<p>For example, <code class="literal">Date</code> is mutable,<sup>[<a id="ch03fn17" href="#ftn.ch03fn17" class="footnote">17</a>]</sup> but if you use it as if it were immutable, you may be able to eliminate the locking that would otherwise be required when sharing a <code class="literal">Date</code> across threads. Suppose you want to maintain a <code class="literal">Map</code> storing the last login time of each user:</p>
+<div class="informalexample">
+<pre class="programlisting">public Map&lt;String, Date&gt; lastLogin =
+    Collections.synchronizedMap(new HashMap&lt;String, Date&gt;());
+</pre>
+</div>
+<p class="continued">If the <code class="literal">Date</code> values are not modified after they are placed in the <code class="literal">Map</code>, then the synchronization in the <code class="literal">synchronizedMap</code> implementation is sufficient to publish the <code class="literal">Date</code> values safely, and no additional synchronization is needed when accessing them.</p>
+</div>
+<div class="section" title="Mutable Objects"><div class="titlepage"><div><div><h3 class="title"><a id="ch03lev2sec15"/>Mutable Objects</h3></div></div></div>
+
+
+<p><a id="iddle1175" class="indexterm"/><a id="iddle1238" class="indexterm"/><a id="iddle1383" class="indexterm"/><a id="iddle1384" class="indexterm"/><a id="iddle1486" class="indexterm"/><a id="iddle1489" class="indexterm"/><a id="iddle1666" class="indexterm"/><a id="iddle1669" class="indexterm"/><a id="iddle1670" class="indexterm"/><a id="iddle2354" class="indexterm"/><a id="iddle2569" class="indexterm"/><a id="iddle2593" class="indexterm"/><a id="iddle2594" class="indexterm"/><a id="iddle2627" class="indexterm"/><a id="iddle2700" class="indexterm"/><a id="iddle2958" class="indexterm"/><a id="iddle2959" class="indexterm"/><a id="iddle2960" class="indexterm"/><a id="iddle3002" class="indexterm"/><a id="iddle3003" class="indexterm"/><a id="iddle3728" class="indexterm"/><a id="iddle4038" class="indexterm"/><a id="iddle4039" class="indexterm"/><a id="iddle4216" class="indexterm"/><a id="iddle4555" class="indexterm"/><a id="iddle4583" class="indexterm"/><a id="iddle4584" class="indexterm"/><a id="iddle5071" class="indexterm"/><a id="iddle5072" class="indexterm"/><a id="iddle5120" class="indexterm"/><a id="iddle1967" class="indexterm"/><a id="iddle2477" class="indexterm"/><a id="iddle2570" class="indexterm"/><a id="iddle2582" class="indexterm"/><a id="iddle3279" class="indexterm"/><a id="iddle3280" class="indexterm"/><a id="iddle3349" class="indexterm"/><a id="iddle3353" class="indexterm"/><a id="iddle3354" class="indexterm"/><a id="iddle3591" class="indexterm"/><a id="iddle3730" class="indexterm"/><a id="iddle4041" class="indexterm"/><a id="iddle4235" class="indexterm"/><a id="iddle4236" class="indexterm"/>If an object may be modified after construction, safe publication ensures only the visibility of the as-published state. Synchronization must be used not only to publish a mutable object, but also every time the object is accessed to ensure visibility of subsequent modifications. To share mutable objects safely, they must be safely published <span class="emphasis"><em>and</em></span> be either thread-safe or guarded by a lock.</p>
+<div class="sidebar"><a id="ch03sb12"/><p class="title"><b/></p>
+<p>The publication requirements for an object depend on its mutability:</p>
+<div class="itemizedlist"><ul class="itemizedlist"><li class="listitem"><p><span class="emphasis"><em>Immutable objects</em></span> can be published through any mechanism;</p></li><li class="listitem"><p><span class="emphasis"><em>Effectively immutable objects</em></span> must be safely published;</p></li><li class="listitem"><p><span class="emphasis"><em>Mutable objects</em></span> must be safely published, and must be either threadsafe or guarded by a lock.</p></li></ul></div>
+</div>
+</div>
+<div class="section" title="Sharing Objects Safely"><div class="titlepage"><div><div><h3 class="title"><a id="ch03lev2sec16"/>Sharing Objects Safely</h3></div></div></div>
+
+<p>Whenever you acquire a reference to an object, you should know what you are allowed to do with it. Do you need to acquire a lock before using it? Are you allowed to modify its state, or only to read it? Many concurrency errors stem from failing to understand these “rules of engagement” for a shared object. When you publish an object, you should document how the object can be accessed.</p>
+<div class="sidebar"><a id="ch03sb13"/><p class="title"><b/></p>
+<p>The most useful policies for using and sharing objects in a concurrent program are:</p>
+<div class="itemizedlist"><ul class="itemizedlist"><li class="listitem"><p title="Thread-confined."><b><span class="strong"><strong>Thread-confined.</strong></span> </b>A thread-confined object is owned exclusively by and confined to one thread, and can be modifled by its owning thread.</p></li><li class="listitem"><p title="Shared read-only."><b><span class="strong"><strong>Shared read-only.</strong></span> </b>A shared read-only object can be accessed concurrently by multiple threads without additional synchronization, but cannot be modified by any thread. Shared read-only objects include immutable and effectively immutable objects.</p></li><li class="listitem"><p title="Shared thread-safe."><b><span class="strong"><strong>Shared thread-safe.</strong></span> </b>A thread-safe object performs synchronization internally, so multiple threads can freely access it through its public interface without further synchronization.</p></li><li class="listitem"><p title="Guarded."><b><span class="strong"><strong>Guarded.</strong></span> </b>A guarded object can be accessed only with a specific lock held. Guarded objects include those that are encapsulated within other thread-safe objects and published objects that are known to be guarded by a specific lock.</p></li></ul></div>
+</div>
+</div>
+<div class="footnotes"><br/><hr/><div class="footnote"><p><sup>[<a id="ftn.ch03fn15" href="#ch03fn15" class="para">15</a>] </sup>The problem here is not the <code class="literal">Holder</code> class itself, but that the <code class="literal">Holder</code> is not properly published. However, <code class="literal">Holder</code> can be made immune to improper publication by declaring the <code class="literal">n</code> field to be <code class="literal">final</code>, which would make <code class="literal">Holder</code> immutable; see <a class="link" href="ch03s05.html#ch03lev2sec12" title="Immutable Objects and Initialization Safety">Section 3.5.2</a>.</p></div><div class="footnote"><p><sup>[<a id="ftn.ch03fn16" href="#ch03fn16" class="para">16</a>] </sup>While it may seem that field values set in a constructor are the first values written to those fields and therefore that there are no “older” values to see as stale values, the <code class="literal">Object</code> constructor first writes the default values to all fields before subclass constructors run. It is therefore possible to see the default value for a field as a stale value.</p></div><div class="footnote"><p><sup>[<a id="ftn.ch03fn17" href="#ch03fn17" class="para">17</a>] </sup>This was probably a mistake in the class library design.</p></div></div></div></body></html>
