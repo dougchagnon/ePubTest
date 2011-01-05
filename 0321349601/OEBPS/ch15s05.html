@@ -1,7 +1,0 @@
-<?xml version="1.0" encoding="UTF-8" standalone="no"?>
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN" "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
-<html xmlns="http://www.w3.org/1999/xhtml"><head><title>Summary</title><link rel="stylesheet" href="styles/convert.css" type="text/css"/></head><body><div class="section" title="Summary"><div class="titlepage"><div><div><h2 class="title"><a id="ch15lev1sec5"/>Summary</h2></div></div></div>
-
-<p>Nonblocking algorithms maintain thread safety by using low-level concurrency primitives such as compare-and-swap instead of locks. These low-level primitives are exposed through the atomic variable classes, which can also be used as “better volatile variables” providing atomic update operations for integers and object references.</p>
-<p>Nonblocking algorithms are difficult to design and implement, but can offer better scalability under typical conditions and greater resistance to liveness failures. Many of the advances in concurrent performance from one JVM version to the next come from the use of nonblocking algorithms, both within the JVM and in the platform libraries.</p>
-</div></body></html>
